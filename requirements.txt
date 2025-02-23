@@ -8,3 +8,6 @@ chromadb == 0.6.3
 #sqlite3 == 3.35.0
 langchain-google-genai == 2.0.10
 pysqlite3-binary
+opencv-python-headless
+torch>=2.0.0
+transformers>=4.30.0
