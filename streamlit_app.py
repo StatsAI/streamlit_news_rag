@@ -48,13 +48,25 @@ def pull_latest_links():
     links = links[1:-2]
     return links
 
-# Cache the vector database
+# Cache the ChromaDB client
 @st.cache_resource
-def load_vector_database(_embedding_function, _docs):
-    chroma_client = chromadb.Client(Settings(
+def get_chroma_client():
+    return chromadb.Client(Settings(
         chroma_db_impl="duckdb+parquet",
         persist_directory=".chromadb"  # Persist data to this directory
     ))
+
+# Cache the vector database
+@st.cache_resource
+def load_vector_database(_embedding_function, _docs):
+    chroma_client = get_chroma_client()
+    
+    # Delete existing collection if it exists
+    try:
+        chroma_client.delete_collection("cnn_doc_embeddings")
+    except ValueError:
+        pass  # Collection does not exist
+
     return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings", client=chroma_client)
 
 # Button to pull the latest links
