@@ -7,6 +7,7 @@ import streamlit as st
 from unstructured.partition.html import partition_html
 from langchain.document_loaders import UnstructuredURLLoader
 import chromadb
+from chromadb.config import Settings
 from langchain.vectorstores.chroma import Chroma
 from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -50,8 +51,11 @@ def pull_latest_links():
 # Cache the vector database
 @st.cache_resource
 def load_vector_database(_embedding_function, _docs):
-    chroma_client = chromadb.Client()
-    return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings")
+    chroma_client = chromadb.Client(Settings(
+        chroma_db_impl="duckdb+parquet",
+        persist_directory=".chromadb"  # Persist data to this directory
+    ))
+    return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings", client=chroma_client)
 
 # Button to pull the latest links
 if st.button("Pull Latest Links"):
