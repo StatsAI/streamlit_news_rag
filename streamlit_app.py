@@ -1,3 +1,8 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+import sqlite3
+
 import streamlit as st
 from unstructured.partition.html import partition_html
 from langchain.document_loaders import UnstructuredURLLoader
