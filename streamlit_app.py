@@ -24,7 +24,7 @@ if not asyncio.get_event_loop().is_running():
 st.title("CNN Article Summarizer")
 
 # Button to pull the latest links
-@st.cache_resource
+
 if st.button("Pull Latest Links"):
     cnn_lite_url = "https://lite.cnn.com/"
     elements = partition_html(url=cnn_lite_url)
@@ -45,7 +45,6 @@ if st.button("Pull Latest Links"):
 # Textbox for user query
 query = st.text_input("Enter your query:")
 
-@st.cache_resource
 if 'links' in st.session_state and query:
     links = st.session_state['links']
     loaders = UnstructuredURLLoader(urls=links, show_progress_bar=True)
