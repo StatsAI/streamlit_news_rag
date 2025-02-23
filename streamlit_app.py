@@ -12,11 +12,14 @@ from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.summarize import load_summarize_chain
 import asyncio
+import nest_asyncio
+
+# Patch the event loop to allow nested event loops
+nest_asyncio.apply()
 
 # Ensure the event loop is set correctly
 if not asyncio.get_event_loop().is_running():
     asyncio.set_event_loop(asyncio.new_event_loop())
-
 # Streamlit app title
 st.title("CNN Article Summarizer")
 
