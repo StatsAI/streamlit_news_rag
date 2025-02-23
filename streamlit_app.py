@@ -104,11 +104,4 @@ if 'links' in st.session_state and query:
                                  google_api_key=gem_api_key)
 
     # Summarize the results
-    chain = load_summarize_chain(llm, chain_type="stuff")
-
-    for doc in query_docs:
-        source = doc.metadata
-        result = chain.invoke([doc])
-        st.write(result['output_text'])
-        st.write(source)
-        st.write('')
+    chain = load_summarize_chain(llm, chain
