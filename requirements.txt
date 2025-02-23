@@ -6,3 +6,4 @@ langchain-huggingface
 sentence-transformers
 chromadb
 langchain-google-genai
+pysqlite3-binary
