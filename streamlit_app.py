@@ -49,9 +49,9 @@ def pull_latest_links():
 
 # Cache the vector database
 @st.cache_resource
-def load_vector_database(_docs, embedding_function):
+def load_vector_database(_embedding_function, _docs):
     chroma_client = chromadb.Client()
-    return Chroma.from_documents(_docs, embedding_function, collection_name="cnn_doc_embeddings")
+    return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings")
 
 # Button to pull the latest links
 if st.button("Pull Latest Links"):
@@ -73,7 +73,7 @@ if 'links' in st.session_state and query:
     embedding_function = load_embedding_model()
 
     # Load vector database
-    vectorstore = load_vector_database(docs, embedding_function)
+    vectorstore = load_vector_database(embedding_function, docs)
 
     # Query the vector database
     query_docs = vectorstore.similarity_search(query, k=5)
