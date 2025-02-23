@@ -1,0 +1,8 @@
+streamlit
+unstructured[all-docs]
+langchain
+langchain-community
+langchain-huggingface
+sentence-transformers
+chromadb
+langchain-google-genai
