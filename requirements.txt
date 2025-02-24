@@ -1,6 +1,8 @@
 streamlit==1.31.1
 sentence-transformers
 langchain
+langchain-community
 langchain-google-genai
 pysqlite3-binary
-unstructured[all-docs]
+chromadb
+#unstructured[all-docs]
