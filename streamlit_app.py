@@ -1,21 +1,23 @@
 from sentence_transformers import SentenceTransformer
+#import streamlit as st
+#st.write("success!")
+
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+import sqlite3
+
 import streamlit as st
+#from unstructured.partition.html import partition_html
+from langchain_community.document_loaders import UnstructuredURLLoader
+from langchain_community.vectorstores import Chroma
+#from sentence_transformers import SentenceTransformer
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.chains.summarize import load_summarize_chain
+import chromadb
+from chromadb.config import Settings
 st.write("success!")
 
-# __import__('pysqlite3')
-# import sys
-# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-# import sqlite3
-
-# import streamlit as st
-# from unstructured.partition.html import partition_html
-# from langchain_community.document_loaders import UnstructuredURLLoader
-# from langchain_community.vectorstores import Chroma
-# #from sentence_transformers import SentenceTransformer
-# from langchain_google_genai import ChatGoogleGenerativeAI
-# from langchain.chains.summarize import load_summarize_chain
-# import chromadb
-# from chromadb.config import Settings
 
 # #import asyncio
 
