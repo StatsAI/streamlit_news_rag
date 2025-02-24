@@ -12,17 +12,17 @@ from langchain.vectorstores.chroma import Chroma
 from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.summarize import load_summarize_chain
-import asyncio
+#import asyncio
 
 # Ensure the event loop is set correctly
-try:
-    loop = asyncio.get_event_loop()
-except RuntimeError as e:
-    if str(e).startswith('There is no current event loop in thread'):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    else:
-        raise
+# try:
+#     loop = asyncio.get_event_loop()
+# except RuntimeError as e:
+#     if str(e).startswith('There is no current event loop in thread'):
+#         loop = asyncio.new_event_loop()
+#         asyncio.set_event_loop(loop)
+#     else:
+#         raise
 
 # Streamlit app title
 st.title("CNN Article Summarizer")
