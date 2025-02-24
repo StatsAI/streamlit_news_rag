@@ -1,5 +1,5 @@
 pip
-streamlit
+streamlit==1.31.1
 unstructured[all-docs]
 langchain
 langchain-community
