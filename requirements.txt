@@ -12,5 +12,6 @@ pysqlite3-binary
 #torch>=2.0.0
 #transformers>=4.30.0
 transformers == 4.39.0
+tokenizers>=0.19.1
 #nest_asyncio
 #transformers
