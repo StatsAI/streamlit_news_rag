@@ -6,14 +6,13 @@ import sqlite3
 import streamlit as st
 from unstructured.partition.html import partition_html
 from langchain_community.document_loaders import UnstructuredURLLoader
-import chromadb
-from chromadb.config import Settings
-from langchain.vectorstores.chroma import Chroma
-#from langchain.embeddings import SentenceTransformerEmbeddings
+from langchain_community.vectorstores import Chroma
 from sentence_transformers import SentenceTransformer
-#from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.summarize import load_summarize_chain
+import chromadb
+from chromadb.config import Settings
+
 #import asyncio
 
 # Ensure the event loop is set correctly
