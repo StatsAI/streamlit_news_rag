@@ -5,4 +5,5 @@ langchain-community
 langchain-google-genai
 pysqlite3-binary
 chromadb
+unstructured
 #unstructured[all-docs]
