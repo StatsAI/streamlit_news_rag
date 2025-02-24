@@ -4,6 +4,7 @@ unstructured[all-docs]
 langchain
 langchain-community
 #langchain-huggingface
+transformers
 sentence-transformers
 chromadb
 langchain-google-genai
