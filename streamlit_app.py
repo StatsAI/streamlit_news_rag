@@ -58,12 +58,17 @@ def pull_latest_links():
     return links
 
 # Cache the ChromaDB client
+#@st.cache_resource
+# def get_chroma_client():
+#     return chromadb.Client(Settings(
+#         chroma_db_impl="duckdb+parquet",
+#         persist_directory=".chromadb"  # Persist data to this directory
+#     ))
+
+# Cache the ChromaDB client
 @st.cache_resource
 def get_chroma_client():
-    return chromadb.Client(Settings(
-        chroma_db_impl="duckdb+parquet",
-        persist_directory=".chromadb"  # Persist data to this directory
-    ))
+    return chromadb.PersistentClient(path=".chromadb")  # Use PersistentClient and path
 
 # Cache the vector database
 @st.cache_resource
