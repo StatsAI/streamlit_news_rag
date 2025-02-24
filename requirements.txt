@@ -11,5 +11,6 @@ pysqlite3-binary
 #opencv-python
 #torch>=2.0.0
 #transformers>=4.30.0
+transformers == 4.28.1 
 #nest_asyncio
 #transformers
