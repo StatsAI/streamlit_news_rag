@@ -1,8 +1,6 @@
 streamlit==1.31.1
-#torch==2.0.1
-#torchvision==0.15.2
 sentence-transformers
 langchain==0.1.7
 langchain-google-genai
 pysqlite3-binary
-unstructured[all-docs]
+#unstructured[all-docs]
