@@ -1,6 +1,6 @@
 from sentence_transformers import SentenceTransformer
 
-st.write("success!)
+st.write("success!")
 
 # __import__('pysqlite3')
 # import sys
