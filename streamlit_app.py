@@ -1,3 +1,5 @@
+from sentence_transformers import SentenceTransformer
+
 __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
@@ -7,7 +9,7 @@ import streamlit as st
 from unstructured.partition.html import partition_html
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_community.vectorstores import Chroma
-from sentence_transformers import SentenceTransformer
+#from sentence_transformers import SentenceTransformer
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.summarize import load_summarize_chain
 import chromadb
