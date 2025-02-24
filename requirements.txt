@@ -10,4 +10,4 @@ pysqlite3-binary
 opencv-python-headless
 torch>=2.0.0
 #transformers>=4.30.0
-nest_asyncio
+#nest_asyncio
