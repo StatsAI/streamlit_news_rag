@@ -2,5 +2,5 @@ streamlit==1.31.1
 sentence-transformers
 langchain==0.1.7
 langchain-google-genai
-pysqlite3-binary
+#pysqlite3-binary
 #unstructured[all-docs]
