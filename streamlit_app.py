@@ -1,4 +1,4 @@
-from sentence_transformers import SentenceTransformer
+#from sentence_transformers import SentenceTransformer
 #import streamlit as st
 #st.write("success!")
 
@@ -11,7 +11,7 @@ import streamlit as st
 from unstructured.partition.html import partition_html
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_community.vectorstores import Chroma
-#from sentence_transformers import SentenceTransformer
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.summarize import load_summarize_chain
 import chromadb
@@ -37,7 +37,7 @@ st.title("CNN Article Summarizer")
 # Cache the embedding model
 @st.cache_resource
 def load_embedding_model():
-    return SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 # Cache the links
 @st.cache_data
