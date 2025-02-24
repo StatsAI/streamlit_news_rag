@@ -8,7 +8,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import sqlite3
 
 import streamlit as st
-#from unstructured.partition.html import partition_html
+from unstructured.partition.html import partition_html
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_community.vectorstores import Chroma
 #from sentence_transformers import SentenceTransformer
