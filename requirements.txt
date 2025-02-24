@@ -1,12 +1,11 @@
 streamlit
-unstructured[all-docs] == 0.16.23
-langchain == 0.3.19
-langchain-community == 0.3.18
-langchain-huggingface == 0.1.2
-sentence-transformers == 3.4.1
-chromadb == 0.6.3
-#sqlite3 == 3.35.0
-langchain-google-genai == 2.0.10
+unstructured[all-docs]==0.16.23
+langchain==0.3.19
+langchain-community==0.3.18
+langchain-huggingface==0.1.2
+sentence-transformers==3.4.1
+chromadb==0.6.3
+langchain-google-genai==2.0.10
 pysqlite3-binary
 opencv-python-headless
 torch>=2.0.0
