@@ -15,8 +15,14 @@ from langchain.chains.summarize import load_summarize_chain
 import asyncio
 
 # Ensure the event loop is set correctly
-if not asyncio.get_event_loop().is_running():
-    asyncio.set_event_loop(asyncio.new_event_loop())
+try:
+    loop = asyncio.get_event_loop()
+except RuntimeError as e:
+    if str(e).startswith('There is no current event loop in thread'):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    else:
+        raise
 
 # Streamlit app title
 st.title("CNN Article Summarizer")
