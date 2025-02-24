@@ -5,4 +5,4 @@ sentence-transformers
 langchain==0.1.7
 langchain-google-genai
 pysqlite3-binary
-unstructured[all-docs]
+#unstructured[all-docs]
