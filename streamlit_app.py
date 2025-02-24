@@ -1,7 +1,3 @@
-#from sentence_transformers import SentenceTransformer
-#import streamlit as st
-#st.write("success!")
-
 __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
@@ -16,20 +12,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.summarize import load_summarize_chain
 import chromadb
 from chromadb.config import Settings
-#st.write("success!")
-
-
-# #import asyncio
-
-# # Ensure the event loop is set correctly
-# # try:
-# #     loop = asyncio.get_event_loop()
-# # except RuntimeError as e:
-# #     if str(e).startswith('There is no current event loop in thread'):
-# #         loop = asyncio.new_event_loop()
-# #         asyncio.set_event_loop(loop)
-# #     else:
-# #         raise
+from concurrent.futures import ThreadPoolExecutor
 
 # Streamlit app title
 st.title("CNN Article Summarizer")
@@ -58,14 +41,6 @@ def pull_latest_links():
     return links
 
 # Cache the ChromaDB client
-#@st.cache_resource
-# def get_chroma_client():
-#     return chromadb.Client(Settings(
-#         chroma_db_impl="duckdb+parquet",
-#         persist_directory=".chromadb"  # Persist data to this directory
-#     ))
-
-# Cache the ChromaDB client
 @st.cache_resource
 def get_chroma_client():
     return chromadb.PersistentClient(path=".chromadb")  # Use PersistentClient and path
@@ -83,6 +58,13 @@ def load_vector_database(_embedding_function, _docs):
 
     return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings", client=chroma_client)
 
+# Load documents in parallel
+def load_documents_parallel(urls):
+    with ThreadPoolExecutor() as executor:
+        loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=False) for url in urls]
+        docs = list(executor.map(lambda loader: loader.load(), loaders))
+    return [doc for sublist in docs for doc in sublist]  # Flatten the list
+
 # Button to pull the latest links
 if st.button("Pull Latest Links"):
     links = pull_latest_links()
@@ -95,9 +77,8 @@ query = st.text_input("Enter your query:")
 if 'links' in st.session_state and query:
     links = st.session_state['links']
     
-    # Load documents
-    loaders = UnstructuredURLLoader(urls=links, show_progress_bar=True)
-    docs = loaders.load()
+    # Load documents in parallel
+    docs = load_documents_parallel(links)
 
     # Load embedding model
     embedding_function = load_embedding_model()
@@ -120,6 +101,7 @@ if 'links' in st.session_state and query:
     # Summarize the results
     chain = load_summarize_chain(llm, chain_type="stuff")
 
+    # Display results
     for doc in query_docs:
         source = doc.metadata
         result = chain.invoke([doc])
