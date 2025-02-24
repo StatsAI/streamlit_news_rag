@@ -10,8 +10,8 @@ import chromadb
 from chromadb.config import Settings
 from langchain.vectorstores.chroma import Chroma
 #from langchain.embeddings import SentenceTransformerEmbeddings
-from sentence_transformers import SentenceTransformer, util
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from sentence_transformers import SentenceTransformer
+#from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.summarize import load_summarize_chain
 #import asyncio
