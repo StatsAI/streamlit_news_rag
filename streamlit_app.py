@@ -71,7 +71,7 @@ links = pull_latest_links()
 st.session_state['links'] = links
 end = time.time()
 diff = end - start
-st.write(f"Latest links pulled in {diff} seconds")
+st.write(f"Latest links pulled in {round(diff,2)} seconds")
 
 #links = st.session_state['links']
 docs = load_documents_parallel(links)
