@@ -62,12 +62,9 @@ def load_vector_database(_embedding_function, _docs):
 @st.cache_resource
 # Load documents in parallel
 def load_documents_parallel(urls):
-    def load_document(url):
-        loader = UnstructuredURLLoader(urls=[url], show_progress_bar=False)
-        return loader.load()
-
     with ThreadPoolExecutor() as executor:
-        docs = list(executor.map(load_document, urls))
+        loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=False) for url in urls]
+        docs = list(executor.map(lambda loader: loader.load(), loaders))
     return [doc for sublist in docs for doc in sublist]  # Flatten the list
 
 @st.cache_resource
@@ -118,6 +115,11 @@ st.write(f"Gemini model loaded in {round(diff,3)} seconds")
 query = st.text_input("Enter your query:")
 
 if query:
+    #start = time.time()
+    #end = time.time()
+    #diff = end - start
+    #st.write(f"Vector database loaded in {round(diff,3)} seconds")
+    
     # Query the vector database
     start = time.time()
     query_docs = vectorstore.similarity_search(query, k=5)
