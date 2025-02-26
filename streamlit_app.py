@@ -77,6 +77,7 @@ def load_gemini_model():
                                  timeout=None,
                                  max_retries=2,
                                  google_api_key=gem_api_key)
+    return llm
 
 start = time.time()
 links = pull_latest_links()
@@ -105,7 +106,7 @@ diff = end - start
 st.write(f"Vector database loaded in {round(diff,3)} seconds")
 
 start = time.time()
-load_gemini_model()
+llm = load_gemini_model()
 end = time.time()
 diff = end - start
 st.write(f"Gemini model loaded in {round(diff,3)} seconds")
