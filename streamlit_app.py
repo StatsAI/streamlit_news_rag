@@ -67,6 +67,17 @@ def load_documents_parallel(urls):
         docs = list(executor.map(lambda loader: loader.load(), loaders))
     return [doc for sublist in docs for doc in sublist]  # Flatten the list
 
+@st.cache_resource
+# Load gemini model
+def load_gemini_model():    
+    gem_api_key = st.secrets["gemini_api_secret_name"]
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash",
+                                 temperature=0.7,
+                                 max_tokens=None,
+                                 timeout=None,
+                                 max_retries=2,
+                                 google_api_key=gem_api_key)
+
 start = time.time()
 links = pull_latest_links()
 st.session_state['links'] = links
@@ -93,30 +104,32 @@ end = time.time()
 diff = end - start
 st.write(f"Vector database loaded in {round(diff,3)} seconds")
 
-# Button to pull the latest links
-#if st.button("Pull Latest Links"):
-#    links = pull_latest_links()
-#    st.session_state['links'] = links
-#    st.write("Latest links pulled successfully!")
+start = time.time()
+load_gemini_model()
+end = time.time()
+diff = end - start
+st.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
 # Textbox for user query
 query = st.text_input("Enter your query:")
 
 if query:
+    #start = time.time()
+    #end = time.time()
+    #diff = end - start
+    #st.write(f"Vector database loaded in {round(diff,3)} seconds")
+    
     # Query the vector database
+    start = time.time()
     query_docs = vectorstore.similarity_search(query, k=5)
-
-    # Load Gemini model
-    gem_api_key = st.secrets["gemini_api_secret_name"]
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash",
-                                 temperature=0.7,
-                                 max_tokens=None,
-                                 timeout=None,
-                                 max_retries=2,
-                                 google_api_key=gem_api_key)
+    end = time.time()
+    st.write(f"Vector database queried in {round(diff,3)} seconds")    
 
     # Summarize the results
+    start = time.time()         
     chain = load_summarize_chain(llm, chain_type="stuff")
+    end = time.time()
+    st.write(f"Chain summarized in {round(diff,3)} seconds") 
 
     # Display results
     for doc in query_docs:
