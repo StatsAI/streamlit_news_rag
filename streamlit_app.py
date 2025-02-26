@@ -63,7 +63,7 @@ def load_vector_database(_embedding_function, _docs):
 # Load documents in parallel
 def load_documents_parallel(urls):
     with ThreadPoolExecutor() as executor:
-        loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=True) for url in urls]
+        loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=False) for url in urls]
         docs = list(executor.map(lambda loader: loader.load(), loaders))
     return [doc for sublist in docs for doc in sublist]  # Flatten the list
 
