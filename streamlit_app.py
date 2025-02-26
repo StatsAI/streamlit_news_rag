@@ -73,8 +73,13 @@ end = time.time()
 diff = end - start
 st.write(f"Latest links pulled in {round(diff,3)} seconds")
 
-#links = st.session_state['links']
+start = time.time()
 docs = load_documents_parallel(links)
+end = time.time()
+diff = end - start
+st.write(f"Content extracted from links in {round(diff,3)} seconds")
+
+
 embedding_function = load_embedding_model()
 
 st.write("Embedding model loaded!")
