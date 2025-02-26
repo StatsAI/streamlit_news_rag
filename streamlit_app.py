@@ -59,6 +59,7 @@ def load_vector_database(_embedding_function, _docs):
 
     return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings", client=chroma_client)
 
+@st.cache_resource
 # Load documents in parallel
 def load_documents_parallel(urls):
     with ThreadPoolExecutor() as executor:
@@ -102,7 +103,6 @@ st.write(f"Vector database loaded in {round(diff,3)} seconds")
 query = st.text_input("Enter your query:")
 
 if query:
-
     # Query the vector database
     query_docs = vectorstore.similarity_search(query, k=5)
 
