@@ -79,12 +79,18 @@ end = time.time()
 diff = end - start
 st.write(f"Content extracted from links in {round(diff,3)} seconds")
 
-
+start = time.time()
 embedding_function = load_embedding_model()
+end = time.time()
+diff = end - start
+st.write(f"Embedding model loaded in {round(diff,3)} seconds")
 
-st.write("Embedding model loaded!")
+#st.write("Embedding model loaded!")
+start = time.time()
 vectorstore = load_vector_database(embedding_function, docs)
-st.write("Vector database locked and loaded!")
+end = time.time()
+diff = end - start
+st.write(f"Vector database loaded in {round(diff,3)} seconds")
 
 # Button to pull the latest links
 #if st.button("Pull Latest Links"):
