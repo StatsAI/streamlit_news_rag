@@ -2,6 +2,7 @@ __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import sqlite3
+import time
 
 import streamlit as st
 from unstructured.partition.html import partition_html
@@ -64,10 +65,13 @@ def load_documents_parallel(urls):
         loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=False) for url in urls]
         docs = list(executor.map(lambda loader: loader.load(), loaders))
     return [doc for sublist in docs for doc in sublist]  # Flatten the list
-	
+
+start = time.time()
 links = pull_latest_links()
 st.session_state['links'] = links
-st.write("Latest links pulled successfully!")
+end = time.time()
+diff = end - start
+st.write(f"Latest links pulled in {} seconds", diff)
 
 #links = st.session_state['links']
 docs = load_documents_parallel(links)
