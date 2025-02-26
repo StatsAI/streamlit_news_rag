@@ -64,27 +64,29 @@ def load_documents_parallel(urls):
         loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=False) for url in urls]
         docs = list(executor.map(lambda loader: loader.load(), loaders))
     return [doc for sublist in docs for doc in sublist]  # Flatten the list
+	
+links = pull_latest_links()
+st.session_state['links'] = links
+st.write("Latest links pulled successfully!")
+
+#links = st.session_state['links']
+docs = load_documents_parallel(links)
+embedding_function = load_embedding_model()
+
+st.write("Embedding model loaded!")
+vectorstore = load_vector_database(embedding_function, docs)
+st.write("Vector database locked and loaded!")
 
 # Button to pull the latest links
-if st.button("Pull Latest Links"):
-    links = pull_latest_links()
-    st.session_state['links'] = links
-    st.write("Latest links pulled successfully!")
+#if st.button("Pull Latest Links"):
+#    links = pull_latest_links()
+#    st.session_state['links'] = links
+#    st.write("Latest links pulled successfully!")
 
 # Textbox for user query
 query = st.text_input("Enter your query:")
 
-if 'links' in st.session_state and query:
-    links = st.session_state['links']
-    
-    # Load documents in parallel
-    docs = load_documents_parallel(links)
-
-    # Load embedding model
-    embedding_function = load_embedding_model()
-
-    # Load vector database
-    vectorstore = load_vector_database(embedding_function, docs)
+if query:
 
     # Query the vector database
     query_docs = vectorstore.similarity_search(query, k=5)
