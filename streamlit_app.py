@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Streamlit app title
 st.title("CNN Article Summarization via LangChain, RAG, and Gemini")
+st.write("This app ingests the latest articles from cnn into a chromadb vector database using the unstructured library. The user's query retrieves the 5 most relevant articles from the vector database. These results are passed to an LLM as context for summarization. is
 
 # Cache the embedding model
 @st.cache_resource
@@ -114,12 +115,7 @@ st.write(f"Gemini model loaded in {round(diff,3)} seconds")
 # Textbox for user query
 query = st.text_input("Enter your query:")
 
-if query:
-    #start = time.time()
-    #end = time.time()
-    #diff = end - start
-    #st.write(f"Vector database loaded in {round(diff,3)} seconds")
-    
+if query:    
     # Query the vector database
     start = time.time()
     query_docs = vectorstore.similarity_search(query, k=5)
