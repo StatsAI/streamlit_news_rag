@@ -16,7 +16,7 @@ from chromadb.config import Settings
 from concurrent.futures import ThreadPoolExecutor
 
 # Streamlit app title
-st.title("CNN Article Summarizer")
+st.title("Gemini + RAG Summarization of Latest CNN Articles")
 
 # Cache the embedding model
 @st.cache_resource
