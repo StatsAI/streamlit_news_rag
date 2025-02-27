@@ -39,7 +39,7 @@ st.markdown(
             display: block;
             margin-left: 50px;
             margin-right: auto;
-	    margin-top: auto;
+	    margin-top: 20px;
             width: 100%;
 	    #margin: 0;	         		
         }
