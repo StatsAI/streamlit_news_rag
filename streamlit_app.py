@@ -58,6 +58,23 @@ st.markdown("""
         </style>
         """, unsafe_allow_html=True)
 
+st.sidebar.write('')
+st.sidebar.write('')
+st.sidebar.write('')
+st.sidebar.write('')
+
+with st.sidebar:
+    st.markdown("""
+        <style>
+            [data-testid=stTextInput] {
+                height: -5px;  # Adjust the height as needed
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    query = st.text_input("Topic Selection: Enter the topic you want to summarize articles for", "", key = "text")
+
+
 # Streamlit app title
 st.title("CNN Article Summarization via LangChain, RAG, and Gemini")
 st.write("How this app works: This app ingests the latest articles from cnn into a chromadb vector database using the unstructured library. The user's query retrieves the 5 most relevant articles from the vector database. These results are passed to an LLM as context for summarization")
@@ -156,7 +173,7 @@ diff = end - start
 st.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
 # Textbox for user query
-query = st.text_input("Enter your query:")
+#query = st.text_input("Enter your query:")
 
 if query:    
     # Query the vector database
