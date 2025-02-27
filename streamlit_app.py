@@ -17,19 +17,46 @@ from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 from PIL import ImageOps
 
-logo = Image.open('images/picture.png')
+#logo = Image.open('images/picture.png')
 #st.image(logo)
 #newsize = (95, 95)
 #logo = logo.resize(newsize)
 
-#logo = Image.open('images/picture.png')
-#newsize = (95, 95)  # Adjust the size as needed
+# # Centering the logo
+# col1, col2, col3 = st.columns([1, 2, 1])  # Create columns with relative widths
+# with col2:  # Place the logo in the middle column
+#     st.image(logo)
+
+logo = Image.open('images/picture.png')
+#newsize = (95, 95)
 #logo = logo.resize(newsize)
 
-# Centering the logo
-col1, col2, col3 = st.columns([1, 2, 1])  # Create columns with relative widths
-with col2:  # Place the logo in the middle column
+st.markdown(
+    """
+    <style>
+        [data-testid=stSidebar] [data-testid=stImage]{
+            text-align: center;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+	    margin-top: -75px;
+            width: 100%;
+	    #margin: 0;	         		
+        }
+    </style>
+    """, unsafe_allow_html=True
+)
+
+with st.sidebar:
     st.image(logo)
+
+st.markdown("""
+        <style>
+               .block-container {
+		    padding-top: 0;
+                }
+        </style>
+        """, unsafe_allow_html=True)
 
 # Streamlit app title
 st.title("CNN Article Summarization via LangChain, RAG, and Gemini")
