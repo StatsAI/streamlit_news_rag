@@ -26,6 +26,11 @@ logo = Image.open('images/picture.png')
 newsize = (95, 95)  # Adjust the size as needed
 logo = logo.resize(newsize)
 
+# Centering the logo
+col1, col2, col3 = st.columns([1, 2, 1])  # Create columns with relative widths
+with col2:  # Place the logo in the middle column
+    st.image(logo)
+
 # Streamlit app title
 st.title("CNN Article Summarization via LangChain, RAG, and Gemini")
 st.write("How this app works: This app ingests the latest articles from cnn into a chromadb vector database using the unstructured library. The user's query retrieves the 5 most relevant articles from the vector database. These results are passed to an LLM as context for summarization")
