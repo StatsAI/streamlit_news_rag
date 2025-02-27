@@ -26,29 +26,6 @@ logo = Image.open('images/picture.png')
 newsize = (95, 95)  # Adjust the size as needed
 logo = logo.resize(newsize)
 
-# Center the logo using HTML and CSS
-st.markdown(
-    """
-    <style>
-        .logo-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-    </style>
-    """, unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <div class="logo-container">
-        <img src="data:image/png;base64,{}" alt="logo">
-    </div>
-    """.format(logo_to_base64(logo)), unsafe_allow_html=True
-)
-
-
-
 # Streamlit app title
 st.title("CNN Article Summarization via LangChain, RAG, and Gemini")
 st.write("How this app works: This app ingests the latest articles from cnn into a chromadb vector database using the unstructured library. The user's query retrieves the 5 most relevant articles from the vector database. These results are passed to an LLM as context for summarization")
