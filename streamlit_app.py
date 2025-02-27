@@ -18,7 +18,7 @@ from PIL import Image
 from PIL import ImageOps
 
 logo = Image.open('images/picture.png')
-st.image(logo)
+#st.image(logo)
 newsize = (95, 95)
 logo = logo.resize(newsize)
 
