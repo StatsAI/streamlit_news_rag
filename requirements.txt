@@ -8,3 +8,4 @@ pysqlite3-binary
 chromadb
 unstructured
 #unstructured[all-docs]
+Pillow==9.5.0
