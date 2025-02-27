@@ -19,35 +19,34 @@ from PIL import ImageOps
 
 logo = Image.open('images/picture.png')
 st.image(logo)
-#newsize = (95, 95)
-#logo = logo.resize(newsize)
+newsize = (95, 95)
+logo = logo.resize(newsize)
 
-# st.markdown(
-#     """
-#     <style>
-#         [data-testid=stSidebar] [data-testid=stImage]{
-#             text-align: center;
-#             display: block;
-#             margin-left: auto;
-#             margin-right: auto;
-# 	    margin-top: -75px;
-#             width: 100%;
-# 	    #margin: 0;	         		
-#         }
-#     </style>
-#     """, unsafe_allow_html=True
-# )
+logo = Image.open('images/picture.png')
+newsize = (95, 95)  # Adjust the size as needed
+logo = logo.resize(newsize)
 
-# with st.sidebar:
-#     st.image(logo)
+# Center the logo using HTML and CSS
+st.markdown(
+    """
+    <style>
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+    </style>
+    """, unsafe_allow_html=True
+)
 
-# st.markdown("""
-#         <style>
-#                .block-container {
-# 		    padding-top: 0;
-#                 }
-#         </style>
-#         """, unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="logo-container">
+        <img src="data:image/png;base64,{}" alt="logo">
+    </div>
+    """.format(logo_to_base64(logo)), unsafe_allow_html=True
+)
+
 
 
 # Streamlit app title
