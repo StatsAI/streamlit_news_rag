@@ -157,7 +157,7 @@ end = time.time()
 diff = end - start
 st.sidebar.write(f"Embedding model loaded in {round(diff,3)} seconds")
 
-st.write("Embedding model loaded!")
+#st.write("Embedding model loaded!")
 start = time.time()
 vectorstore = load_vector_database(embedding_function, docs)
 end = time.time()
