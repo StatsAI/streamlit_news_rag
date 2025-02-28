@@ -224,7 +224,6 @@ if query:
 	    source = doc.metadata
 	    result = chain.invoke([doc])
 	    st.write(result['output_text'])
-	    st.write(type(source))
-	    st.write(str(list(source.values())[0]), unsafe_allow_html=True)
-	    st.write(source)
+	    st.write(Source: str(list(source.values())[0]), unsafe_allow_html=True)
+	    #st.write(source)
 	    st.write('')
