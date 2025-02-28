@@ -210,13 +210,13 @@ if query:
     start = time.time()
     query_docs = vectorstore.similarity_search(query, k=5)
     end = time.time()
-    st.write(f"Vector database queried in {round(diff,3)} seconds")    
+    st.sidebar.write(f"Vector database queried in {round(diff,3)} seconds")    
 
     # Summarize the results
     start = time.time()         
     chain = load_summarize_chain(llm, chain_type="stuff")
     end = time.time()
-    st.write(f"Chain summarized in {round(diff,3)} seconds") 
+    st.sidebar.writee(f"Chain summarized in {round(diff,3)} seconds") 
 
     # Display results
     for doc in query_docs:
