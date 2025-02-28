@@ -171,7 +171,7 @@ llm = load_gemini_model()
 #st.sidebar.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
 # Textbox for user query
-#query = st.text_input("Enter your query:")
+query = st.text_input("Enter your query:")
 
 # if st.sidebar.button('Get latest links'):
 # 	start = time.time()
