@@ -172,38 +172,38 @@ diff = end - start
 # Textbox for user query
 #query = st.text_input("Enter your query:")
 
-if st.sidebar.button('Get latest links'):
-	start = time.time()
-	links = pull_latest_links()
-	st.session_state['links'] = links
-	end = time.time()
-	diff = end - start
-	#st.sidebar.write(f"Latest links pulled in {round(diff,3)} seconds")
+# if st.sidebar.button('Get latest links'):
+# 	start = time.time()
+# 	links = pull_latest_links()
+# 	st.session_state['links'] = links
+# 	end = time.time()
+# 	diff = end - start
+# 	#st.sidebar.write(f"Latest links pulled in {round(diff,3)} seconds")
 	
-	start = time.time()
-	docs = load_documents_parallel(links)
-	end = time.time()
-	diff = end - start
-	#st.sidebar.write(f"Content extracted from links in {round(diff,3)} seconds")
+# 	start = time.time()
+# 	docs = load_documents_parallel(links)
+# 	end = time.time()
+# 	diff = end - start
+# 	#st.sidebar.write(f"Content extracted from links in {round(diff,3)} seconds")
 	
-	# start = time.time()
-	# embedding_function = load_embedding_model()
-	# end = time.time()
-	# diff = end - start
-	# st.write(f"Embedding model loaded in {round(diff,3)} seconds")
+# 	# start = time.time()
+# 	# embedding_function = load_embedding_model()
+# 	# end = time.time()
+# 	# diff = end - start
+# 	# st.write(f"Embedding model loaded in {round(diff,3)} seconds")
 	
-	#st.write("Embedding model loaded!")
-	start = time.time()
-	vectorstore = load_vector_database(embedding_function, docs)
-	end = time.time()
-	diff = end - start
-	st.sidebar.write(f"Vector database loaded in {round(diff,3)} seconds")
+# 	#st.write("Embedding model loaded!")
+# 	start = time.time()
+# 	vectorstore = load_vector_database(embedding_function, docs)
+# 	end = time.time()
+# 	diff = end - start
+# 	st.sidebar.write(f"Vector database loaded in {round(diff,3)} seconds")
 	
-	# start = time.time()
-	# llm = load_gemini_model()
-	# end = time.time()
-	# diff = end - start
-	# st.write(f"Gemini model loaded in {round(diff,3)} seconds")
+# 	# start = time.time()
+# 	# llm = load_gemini_model()
+# 	# end = time.time()
+# 	# diff = end - start
+# 	# st.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
 if query:    
     # Query the vector database
