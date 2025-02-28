@@ -224,7 +224,7 @@ if query:
 	    source = doc.metadata
 	    result = chain.invoke([doc])
 	    st.write(result['output_text'])
-	    string = '<a href=' + source + '</a>'
+	    string = '<a href=' + str(source) + '</a>'
 	    st.write(string, unsafe_allow_html=True)
 	    st.write(source)
 	    st.write('')
