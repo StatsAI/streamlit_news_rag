@@ -138,36 +138,36 @@ def load_gemini_model():
                                  google_api_key=gem_api_key)
     return llm
 
-start = time.time()
+#start = time.time()
 links = pull_latest_links()
 st.session_state['links'] = links
-end = time.time()
-diff = end - start
+#end = time.time()
+#diff = end - start
 #st.sidebar.write(f"Latest links pulled in {round(diff,3)} seconds")
 
-start = time.time()
+#start = time.time()
 docs = load_documents_parallel(links)
-end = time.time()
-diff = end - start
+#end = time.time()
+#diff = end - start
 #st.sidebar.write(f"Content extracted from links in {round(diff,3)} seconds")
 
-start = time.time()
+#start = time.time()
 embedding_function = load_embedding_model()
-end = time.time()
-diff = end - start
+#end = time.time()
+#diff = end - start
 #st.sidebar.write(f"Embedding model loaded in {round(diff,3)} seconds")
 
 #st.write("Embedding model loaded!")
-start = time.time()
+#start = time.time()
 vectorstore = load_vector_database(embedding_function, docs)
-end = time.time()
-diff = end - start
+#end = time.time()
+#diff = end - start
 #st.sidebar.write(f"Vector database loaded in {round(diff,3)} seconds")
 
-start = time.time()
+#start = time.time()
 llm = load_gemini_model()
-end = time.time()
-diff = end - start
+#end = time.time()
+#diff = end - start
 #st.sidebar.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
 # Textbox for user query
@@ -208,15 +208,15 @@ diff = end - start
 
 if query:    
     # Query the vector database
-    start = time.time()
+    #start = time.time()
     query_docs = vectorstore.similarity_search(query, k=5)
-    end = time.time()
+    #end = time.time()
     #st.sidebar.write(f"Vector database queried in {round(diff,3)} seconds")    
 
     # Summarize the results
-    start = time.time()         
+    #start = time.time()         
     chain = load_summarize_chain(llm, chain_type="stuff")
-    end = time.time()
+    #end = time.time()
     #st.sidebar.write(f"Chain summarized in {round(diff,3)} seconds") 
 
     # Display results
