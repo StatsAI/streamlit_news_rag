@@ -70,7 +70,7 @@ with st.sidebar:
         </style>
     """, unsafe_allow_html=True)
 
-    query = st.text_input("Topic Selection: Enter the topic you want to summarize articles for", "President", key = "text")
+    query = st.text_input("Topic Selection: Enter the topic you want to summarize articles for", "Trump", key = "text")
 
 # Streamlit app title
 st.title("CNN Article Summarization via LangChain, RAG, and Gemini")
