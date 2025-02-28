@@ -58,8 +58,8 @@ st.markdown("""
         </style>
         """, unsafe_allow_html=True)
 
-st.sidebar.write('')
-st.sidebar.write('')
+#st.sidebar.write('')
+#st.sidebar.write('')
 
 with st.sidebar:
     st.markdown("""
