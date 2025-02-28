@@ -225,6 +225,6 @@ if query:
 	    result = chain.invoke([doc])
 	    st.write(result['output_text'])
 	    st.write(type(source))
-	    st.write(str(source), unsafe_allow_html=True)
+	    st.write(str(source.values()), unsafe_allow_html=True)
 	    st.write(source)
 	    st.write('')
