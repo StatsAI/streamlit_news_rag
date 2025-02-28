@@ -214,12 +214,10 @@ if query:
 	query_docs = vectorstore.similarity_search(query, k=5)
 	chain = load_summarize_chain(llm, chain_type="stuff")
 	
-	# Display results
 	for doc in query_docs:
 		source = doc.metadata
-	    	result = chain.invoke([doc])
-	    	st.write(result['output_text'])
-	    	string = str(list(source.values())[0])
-	    	st.write("Source: " + string, unsafe_allow_html=True)
-	    	#st.write(source)
-	    	st.write('')
+		result = chain.invoke([doc])
+		st.write(result['output_text'])
+		string = str(list(source.values())[0])
+		st.write("Source: " + string, unsafe_allow_html=True)
+		st.write('')
