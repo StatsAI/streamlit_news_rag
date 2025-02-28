@@ -207,25 +207,29 @@ llm = load_gemini_model()
 # 	# st.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
 if query:
+	links = pull_latest_links()
+	st.session_state['links'] = links
+	docs = load_documents_parallel(links)
+	vectorstore = load_vector_database(embedding_function, docs)
 	
-    # Query the vector database
-    #start = time.time()
-    query_docs = vectorstore.similarity_search(query, k=5)
-    #end = time.time()
-    #st.sidebar.write(f"Vector database queried in {round(diff,3)} seconds")    
+	# Query the vector database
+    	#start = time.time()
+    	query_docs = vectorstore.similarity_search(query, k=5)
+    	#end = time.time()
+    	#st.sidebar.write(f"Vector database queried in {round(diff,3)} seconds")    
 
-    # Summarize the results
-    #start = time.time()         
-    chain = load_summarize_chain(llm, chain_type="stuff")
-    #end = time.time()
-    #st.sidebar.write(f"Chain summarized in {round(diff,3)} seconds") 
+    	# Summarize the results
+    	#start = time.time()         
+    	chain = load_summarize_chain(llm, chain_type="stuff")
+    	#end = time.time()
+    	#st.sidebar.write(f"Chain summarized in {round(diff,3)} seconds") 
 
-    # Display results
-    for doc in query_docs:
-	    source = doc.metadata
-	    result = chain.invoke([doc])
-	    st.write(result['output_text'])
-	    string = str(list(source.values())[0])
-	    st.write("Source: " + string, unsafe_allow_html=True)
-	    #st.write(source)
-	    st.write('')
+    	# Display results
+    	for doc in query_docs:
+		source = doc.metadata
+	    	result = chain.invoke([doc])
+	    	st.write(result['output_text'])
+	    	string = str(list(source.values())[0])
+	    	st.write("Source: " + string, unsafe_allow_html=True)
+	    	#st.write(source)
+	    	st.write('')
