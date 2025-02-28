@@ -214,20 +214,8 @@ if query:
 	query_docs = vectorstore.similarity_search(query, k=5)
 	chain = load_summarize_chain(llm, chain_type="stuff")
 	
-	# Query the vector database
-    	#start = time.time()
-    	#query_docs = vectorstore.similarity_search(query, k=5)
-    	#end = time.time()
-    	#st.sidebar.write(f"Vector database queried in {round(diff,3)} seconds")    
-
-    	# Summarize the results
-    	#start = time.time()         
-    	#chain = load_summarize_chain(llm, chain_type="stuff")
-    	#end = time.time()
-    	#st.sidebar.write(f"Chain summarized in {round(diff,3)} seconds") 
-
-    	# Display results
-    	for doc in query_docs:
+	# Display results
+	for doc in query_docs:
 		source = doc.metadata
 	    	result = chain.invoke([doc])
 	    	st.write(result['output_text'])
