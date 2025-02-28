@@ -74,6 +74,8 @@ with st.sidebar:
 
 # Streamlit app title
 st.title("CNN Article Summarization via LangChain, RAG, and Gemini")
+st.write('<a href="https://lite.cnn.com/">Click here to visit CNN Lite</a>', unsafe_allow_html=True)
+
 st.write("How this app works: This app ingests the latest articles from cnn into a chromadb vector database using the unstructured library. The user's query retrieves the 5 most relevant articles from the vector database. These results are passed to an LLM as context for summarization")
 
 # Cache the embedding model
