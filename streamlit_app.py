@@ -226,5 +226,5 @@ if query:
 	    st.write(result['output_text'])
 	    #string = str(source)
 	    st.write(str(source), unsafe_allow_html=True)
-	    #st.write(source)
+	    st.write(source)
 	    st.write('')
