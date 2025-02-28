@@ -118,16 +118,16 @@ def load_vector_database(_embedding_function, _docs):
 
     return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings", client=chroma_client)
 
-@st.cache_resource
 # Load documents in parallel
+@st.cache_resource
 def load_documents_parallel(urls):
     with ThreadPoolExecutor() as executor:
         loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=False) for url in urls]
         docs = list(executor.map(lambda loader: loader.load(), loaders))
     return [doc for sublist in docs for doc in sublist]  # Flatten the list
 
-@st.cache_resource
 # Load gemini model
+@st.cache_resource
 def load_gemini_model():    
     gem_api_key = st.secrets["gemini_api_secret_name"]
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash",
@@ -143,32 +143,32 @@ links = pull_latest_links()
 st.session_state['links'] = links
 end = time.time()
 diff = end - start
-st.sidebar.write(f"Latest links pulled in {round(diff,3)} seconds")
+#st.sidebar.write(f"Latest links pulled in {round(diff,3)} seconds")
 
 start = time.time()
 docs = load_documents_parallel(links)
 end = time.time()
 diff = end - start
-st.sidebar.write(f"Content extracted from links in {round(diff,3)} seconds")
+#st.sidebar.write(f"Content extracted from links in {round(diff,3)} seconds")
 
 start = time.time()
 embedding_function = load_embedding_model()
 end = time.time()
 diff = end - start
-st.sidebar.write(f"Embedding model loaded in {round(diff,3)} seconds")
+#st.sidebar.write(f"Embedding model loaded in {round(diff,3)} seconds")
 
 #st.write("Embedding model loaded!")
 start = time.time()
 vectorstore = load_vector_database(embedding_function, docs)
 end = time.time()
 diff = end - start
-st.sidebar.write(f"Vector database loaded in {round(diff,3)} seconds")
+#st.sidebar.write(f"Vector database loaded in {round(diff,3)} seconds")
 
 start = time.time()
 llm = load_gemini_model()
 end = time.time()
 diff = end - start
-st.sidebar.write(f"Gemini model loaded in {round(diff,3)} seconds")
+#st.sidebar.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
 # Textbox for user query
 #query = st.text_input("Enter your query:")
