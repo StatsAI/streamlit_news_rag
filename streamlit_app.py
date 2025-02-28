@@ -216,7 +216,7 @@ if query:
     start = time.time()         
     chain = load_summarize_chain(llm, chain_type="stuff")
     end = time.time()
-    st.sidebar.writee(f"Chain summarized in {round(diff,3)} seconds") 
+    st.sidebar.write(f"Chain summarized in {round(diff,3)} seconds") 
 
     # Display results
     for doc in query_docs:
