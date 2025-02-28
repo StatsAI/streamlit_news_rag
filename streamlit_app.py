@@ -212,6 +212,7 @@ if query:
 	docs = load_documents_parallel(links)
 	vectorstore = load_vector_database(embedding_function, docs)
 	query_docs = vectorstore.similarity_search(query, k=5)
+	chain = load_summarize_chain(llm, chain_type="stuff")
 	
 	# Query the vector database
     	#start = time.time()
@@ -221,7 +222,7 @@ if query:
 
     	# Summarize the results
     	#start = time.time()         
-    	chain = load_summarize_chain(llm, chain_type="stuff")
+    	#chain = load_summarize_chain(llm, chain_type="stuff")
     	#end = time.time()
     	#st.sidebar.write(f"Chain summarized in {round(diff,3)} seconds") 
 
