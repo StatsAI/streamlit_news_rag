@@ -206,7 +206,7 @@ diff = end - start
 # 	# diff = end - start
 # 	# st.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
-if query:
+if query or st.sidebar.button('Summarize Articles'):
 	links = pull_latest_links()
 	st.session_state['links'] = links
 	docs = load_documents_parallel(links)
