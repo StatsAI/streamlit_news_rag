@@ -171,7 +171,7 @@ llm = load_gemini_model()
 #st.sidebar.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
 # Textbox for user query
-query = st.text_input("Enter your query:")
+#query = st.text_input("Enter your query:")
 
 # if st.sidebar.button('Get latest links'):
 # 	start = time.time()
@@ -206,7 +206,8 @@ query = st.text_input("Enter your query:")
 # 	# diff = end - start
 # 	# st.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
-if query:    
+if query:
+	
     # Query the vector database
     #start = time.time()
     query_docs = vectorstore.similarity_search(query, k=5)
