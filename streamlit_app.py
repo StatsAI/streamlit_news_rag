@@ -211,10 +211,11 @@ if query:
 	st.session_state['links'] = links
 	docs = load_documents_parallel(links)
 	vectorstore = load_vector_database(embedding_function, docs)
+	query_docs = vectorstore.similarity_search(query, k=5)
 	
 	# Query the vector database
     	#start = time.time()
-    	query_docs = vectorstore.similarity_search(query, k=5)
+    	#query_docs = vectorstore.similarity_search(query, k=5)
     	#end = time.time()
     	#st.sidebar.write(f"Vector database queried in {round(diff,3)} seconds")    
 
