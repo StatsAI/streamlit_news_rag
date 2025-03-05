@@ -119,7 +119,7 @@ def load_vector_database(_embedding_function, _docs):
     return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings", client=chroma_client)
 
 # Load documents in parallel
-@st.cache_resource(ttl="1d", key-"load_docs")
+@st.cache_resource(ttl="1d", key="load_docs")
 def load_documents_parallel(urls):
     with ThreadPoolExecutor() as executor:
         loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=False) for url in urls]
