@@ -191,16 +191,19 @@ if st.sidebar.button('Summarize Articles') or query:
 		st.write("Source: " + string, unsafe_allow_html=True)
 		st.write('')
 
-with st.sidebar:
-    st.markdown("""
-        <style>
-            [data-testid=stTextInput] {
-                height: -5px;  # Adjust the height as needed
-            }
-        </style>
-    """, unsafe_allow_html=True)
+# with st.sidebar:
+#     st.markdown("""
+#         <style>
+#             [data-testid=stTextInput] {
+#                 height: -5px;  # Adjust the height as needed
+#             }
+#         </style>
+#     """, unsafe_allow_html=True)
 
-    st.write("Topic Selection: Enter the topic you want to summarize articles for", "Trump", key = "text")
+#     st.write("Topic Selection: Enter the topic you want to summarize articles for", "Trump", key = "text")
+
+st.sidebar.write("")
+st.sidebar.write("The link cache is updated once a day. Pressing the below button bypasses this, at the cost of a minute to download/load the vector database") 
 
 if st.sidebar.button('Clear cache & get latest links!'):	
 	pull_latest_links.clear()
