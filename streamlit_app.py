@@ -138,17 +138,17 @@ def load_gemini_model():
                                  google_api_key=gem_api_key)
     return llm
 
-start = time.time()
-links = pull_latest_links()
-st.session_state['links'] = links
-end = time.time()
-diff = end - start
+# start = time.time()
+# links = pull_latest_links()
+# st.session_state['links'] = links
+# end = time.time()
+# diff = end - start
 #st.sidebar.write(f"Latest links pulled in {round(diff,3)} seconds")
 
-start = time.time()
-docs = load_documents_parallel(links)
-end = time.time()
-diff = end - start
+# start = time.time()
+# docs = load_documents_parallel(links)
+# end = time.time()
+# diff = end - start
 #st.sidebar.write(f"Content extracted from links in {round(diff,3)} seconds")
 
 start = time.time()
@@ -157,11 +157,11 @@ end = time.time()
 diff = end - start
 #st.sidebar.write(f"Embedding model loaded in {round(diff,3)} seconds")
 
-#st.write("Embedding model loaded!")
-start = time.time()
-vectorstore = load_vector_database(embedding_function, docs)
-end = time.time()
-diff = end - start
+# #st.write("Embedding model loaded!")
+# start = time.time()
+# vectorstore = load_vector_database(embedding_function, docs)
+# end = time.time()
+# diff = end - start
 #st.sidebar.write(f"Vector database loaded in {round(diff,3)} seconds")
 
 start = time.time()
@@ -208,9 +208,9 @@ diff = end - start
 
 if st.sidebar.button('Summarize Articles') or query:
 
-	pull_latest_links().clear()
-	load_documents_parallel.clear()
-	load_vector_database.clear()	
+	#pull_latest_links().clear()
+	#load_documents_parallel.clear()
+	#load_vector_database.clear()	
 	
 	links = pull_latest_links()
 	st.session_state['links'] = links	
