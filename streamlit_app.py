@@ -203,6 +203,7 @@ if st.session_state['cache_cleared']:
     st.session_state['cache_cleared'] = False  # Reset the flag
     default_query = "Trump"
     st.session_state['last_query'] = default_query
+    st.session_state['query_text'] = default_query #Set the textbox value.
     query_docs = vectorstore.similarity_search(default_query, k=5)
     chain = load_summarize_chain(llm, chain_type="stuff")
 
@@ -213,4 +214,3 @@ if st.session_state['cache_cleared']:
         string = str(list(source.values())[0])
         st.write("Source: " + string, unsafe_allow_html=True)
         st.write('')
-
