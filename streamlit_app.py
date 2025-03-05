@@ -170,39 +170,24 @@ end = time.time()
 diff = end - start
 #st.sidebar.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
-if st.sidebar.button('Summarize Articles') or query:
+if 'last_query' not in st.session_state:
+    st.session_state['last_query'] = ""
 
-	#pull_latest_links().clear()
-	#load_documents_parallel.clear()
-	#load_vector_database.clear()	
-	
-	#links = pull_latest_links()
-	#st.session_state['links'] = links	
-	#docs = load_documents_parallel(links)	
-	#vectorstore = load_vector_database(embedding_function, docs)
-	query_docs = vectorstore.similarity_search(query, k=5)
-	chain = load_summarize_chain(llm, chain_type="stuff")
-	
-	for doc in query_docs:
-		source = doc.metadata
-		result = chain.invoke([doc])
-		st.write(result['output_text'])
-		string = str(list(source.values())[0])
-		st.write("Source: " + string, unsafe_allow_html=True)
-		st.write('')
+if st.sidebar.button('Summarize Articles') or (query and query != st.session_state['last_query']):
 
-# with st.sidebar:
-#     st.markdown("""
-#         <style>
-#             [data-testid=stTextInput] {
-#                 height: -5px;  # Adjust the height as needed
-#             }
-#         </style>
-#     """, unsafe_allow_html=True)
+    st.session_state['last_query'] = query # Update the last query state
 
-#     st.write("Topic Selection: Enter the topic you want to summarize articles for", "Trump", key = "text")
+    query_docs = vectorstore.similarity_search(query, k=5)
+    chain = load_summarize_chain(llm, chain_type="stuff")
 
-#st.sidebar.write("")
+    for doc in query_docs:
+        source = doc.metadata
+        result = chain.invoke([doc])
+        st.write(result['output_text'])
+        string = str(list(source.values())[0])
+        st.write("Source: " + string, unsafe_allow_html=True)
+        st.write('')
+	    
 st.sidebar.write("The link cache is updated once a day. Pressing the below button bypasses this, at the cost of a minute to download/load the vector database") 
 
 if st.sidebar.button('Clear cache & get latest links!'):	
