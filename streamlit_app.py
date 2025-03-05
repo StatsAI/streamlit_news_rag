@@ -70,7 +70,7 @@ with st.sidebar:
         </style>
     """, unsafe_allow_html=True)
 
-    query = st.text_input("Topic Selection: Enter the topic you want to summarize articles for", "Trump", key = "text")
+    query = st.text_input("Topic Selection: Enter the topic you want to summarize articles for", "Trump", key = "query_text")
 
 # Streamlit app title
 st.title("CNN Article Summarization via LangChain, RAG, and Gemini")
@@ -206,7 +206,7 @@ if st.sidebar.button('Summarize Articles') or query:
 st.sidebar.write("The link cache is updated once a day. Pressing the below button bypasses this, at the cost of a minute to download/load the vector database") 
 
 if st.sidebar.button('Clear cache & get latest links!'):	
-	query = ""
+	st.session_state[query_text] = ""
 	pull_latest_links.clear()
 	load_documents_parallel.clear()
 	load_vector_database.clear()	
