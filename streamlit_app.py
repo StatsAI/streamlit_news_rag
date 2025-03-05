@@ -191,6 +191,17 @@ if st.sidebar.button('Summarize Articles') or query:
 		st.write("Source: " + string, unsafe_allow_html=True)
 		st.write('')
 
+with st.sidebar:
+    st.markdown("""
+        <style>
+            [data-testid=stTextInput] {
+                height: -5px;  # Adjust the height as needed
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.write("Topic Selection: Enter the topic you want to summarize articles for", "Trump", key = "text")
+
 if st.sidebar.button('Clear cache & get latest links!'):	
 	pull_latest_links.clear()
 	load_documents_parallel.clear()
