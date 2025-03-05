@@ -173,10 +173,12 @@ diff = end - start
 if 'last_query' not in st.session_state:
     st.session_state['last_query'] = ""
 
+if 'cache_cleared' not in st.session_state:
+    st.session_state['cache_cleared'] = False
+
 if st.sidebar.button('Summarize Articles') or (query and query != st.session_state['last_query']):
 
-    st.session_state['last_query'] = query # Update the last query state
-
+    st.session_state['last_query'] = query  # Update the last query state
     query_docs = vectorstore.similarity_search(query, k=5)
     chain = load_summarize_chain(llm, chain_type="stuff")
 
@@ -187,14 +189,28 @@ if st.sidebar.button('Summarize Articles') or (query and query != st.session_sta
         string = str(list(source.values())[0])
         st.write("Source: " + string, unsafe_allow_html=True)
         st.write('')
-	    
-st.sidebar.write("The link cache is updated once a day. Pressing the below button bypasses this, at the cost of a minute to download/load the vector database") 
 
-if st.sidebar.button('Clear cache & get latest links!'):	
-	#st.session_state["query_text"] = ""
-	pull_latest_links.clear()
-	load_documents_parallel.clear()
-	load_vector_database.clear()	
-	st.rerun()
+st.sidebar.write("The link cache is updated once a day. Pressing the below button bypasses this, at the cost of a minute to download/load the vector database")
 
+if st.sidebar.button('Clear cache & get latest links!'):
+    pull_latest_links.clear()
+    load_documents_parallel.clear()
+    load_vector_database.clear()
+    st.session_state['cache_cleared'] = True  # Set the flag
+    st.rerun()
+
+if st.session_state['cache_cleared']:
+    st.session_state['cache_cleared'] = False  # Reset the flag
+    default_query = "Trump"
+    st.session_state['last_query'] = default_query
+    query_docs = vectorstore.similarity_search(default_query, k=5)
+    chain = load_summarize_chain(llm, chain_type="stuff")
+
+    for doc in query_docs:
+        source = doc.metadata
+        result = chain.invoke([doc])
+        st.write(result['output_text'])
+        string = str(list(source.values())[0])
+        st.write("Source: " + string, unsafe_allow_html=True)
+        st.write('')
 
