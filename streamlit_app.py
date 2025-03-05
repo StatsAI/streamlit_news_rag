@@ -193,7 +193,8 @@ if st.sidebar.button('Summarize Articles') or query:
 
 if st.sidebar.button('Clear cache & get latest links!'):	
 	pull_latest_links.clear()
-	#st.cache_resource.clear()
+	load_documents_parallel.clear()
+	load_vector_database.clear()	
 	st.rerun()
 
 
