@@ -202,7 +202,7 @@ if st.sidebar.button('Summarize Articles') or query:
 
 #     st.write("Topic Selection: Enter the topic you want to summarize articles for", "Trump", key = "text")
 
-st.sidebar.write("")
+#st.sidebar.write("")
 st.sidebar.write("The link cache is updated once a day. Pressing the below button bypasses this, at the cost of a minute to download/load the vector database") 
 
 if st.sidebar.button('Clear cache & get latest links!'):	
