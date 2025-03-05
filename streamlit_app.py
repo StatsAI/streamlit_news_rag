@@ -115,6 +115,7 @@ def load_vector_database(_embedding_function, _docs):
         chroma_client.delete_collection("cnn_doc_embeddings")
     except ValueError:
         pass  # Collection does not exist
+     chroma_client.create_collection("cnn_doc_embeddings")
 
     return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings", client=chroma_client)
 
