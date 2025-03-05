@@ -210,6 +210,6 @@ if st.sidebar.button('Clear cache & get latest links!'):
 	pull_latest_links.clear()
 	load_documents_parallel.clear()
 	load_vector_database.clear()	
-	#st.rerun()
+	st.rerun()
 
 
