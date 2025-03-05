@@ -83,7 +83,7 @@ def load_embedding_model():
     return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 # Cache the links
-@st.cache_data
+#@st.cache_data
 def pull_latest_links():
     cnn_lite_url = "https://lite.cnn.com/"
     elements = partition_html(url=cnn_lite_url)
