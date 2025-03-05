@@ -106,7 +106,7 @@ def get_chroma_client():
     return chromadb.PersistentClient(path=".chromadb")  # Use PersistentClient and path
 
 # Cache the vector database
-@st.cache_resource
+#@st.cache_resource
 def load_vector_database(_embedding_function, _docs):
     chroma_client = get_chroma_client()
     
@@ -119,7 +119,7 @@ def load_vector_database(_embedding_function, _docs):
     return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings", client=chroma_client)
 
 # Load documents in parallel
-@st.cache_resource
+#@st.cache_resource
 def load_documents_parallel(urls):
     with ThreadPoolExecutor() as executor:
         loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=False) for url in urls]
