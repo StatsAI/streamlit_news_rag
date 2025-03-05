@@ -78,7 +78,7 @@ st.write("How this app works: This app ingests the latest articles from cnn into
 st.write('<a href="https://lite.cnn.com/">Click here to visit CNN Lite!</a>', unsafe_allow_html=True)
 
 # Cache the embedding model
-@st.cache_resource(ttl = 1h)
+@st.cache_resource()
 def load_embedding_model():
     return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
