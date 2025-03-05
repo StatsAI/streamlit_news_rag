@@ -201,7 +201,7 @@ if st.sidebar.button('Clear cache & get latest links!'):
 
 if st.session_state['cache_cleared']:
     st.session_state['cache_cleared'] = False  # Reset the flag
-    default_query = "Trump"
+    default_query = st.session_state['last_query']
     st.session_state['last_query'] = default_query
     query_docs = vectorstore.similarity_search(default_query, k=5)
     chain = load_summarize_chain(llm, chain_type="stuff")
