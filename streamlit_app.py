@@ -78,12 +78,12 @@ st.write("How this app works: This app ingests the latest articles from cnn into
 st.write('<a href="https://lite.cnn.com/">Click here to visit CNN Lite!</a>', unsafe_allow_html=True)
 
 # Cache the embedding model
-@st.cache_resource
+@st.cache_resource(ttl = 1h)
 def load_embedding_model():
     return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 # Cache the links
-#@st.cache_data
+@st.cache_data
 def pull_latest_links():
     cnn_lite_url = "https://lite.cnn.com/"
     elements = partition_html(url=cnn_lite_url)
@@ -207,9 +207,14 @@ diff = end - start
 # 	# st.write(f"Gemini model loaded in {round(diff,3)} seconds")
 
 if st.sidebar.button('Summarize Articles') or query:
+
+	pull_latest_links().clear()
+	load_documents_parallel.clear()
+	load_vector_database.clear()	
+	
 	links = pull_latest_links()
-	st.session_state['links'] = links
-	docs = load_documents_parallel(links)
+	st.session_state['links'] = links	
+	docs = load_documents_parallel(links)	
 	vectorstore = load_vector_database(embedding_function, docs)
 	query_docs = vectorstore.similarity_search(query, k=5)
 	chain = load_summarize_chain(llm, chain_type="stuff")
