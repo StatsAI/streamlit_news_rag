@@ -16,8 +16,30 @@ import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 
-# --- Page Config ---
+# --- Page Config & Styling (from "old code" UI) ---
 st.set_page_config(page_title="CNN News Intelligence", layout="wide")
+
+try:
+    logo = Image.open('images/picture.png')
+    st.markdown(
+        """
+        <style>
+            [data-testid=stSidebar] [data-testid=stImage]{
+                text-align: center;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: -25px;
+                width: 100%;
+            }
+            .block-container { padding-top: 1rem; }
+        </style>
+        """, unsafe_allow_html=True
+    )
+    with st.sidebar:
+        st.image(logo)
+except FileNotFoundError:
+    st.sidebar.warning("Logo not found. Please check 'images/picture.png' path.")
 
 # --- Backend Functions ---
 
@@ -82,21 +104,19 @@ def get_groq_fallback():
     except: return None
 
 def run_hybrid_summarization(relevant_docs):
-    # """Try Gemini first; if quota is hit, use Groq."""
-    # # Strategy 1: Gemini
-    # gemini = get_gemini()
-    # if gemini:
-    #     try:
-    #         chain = load_summarize_chain(gemini, chain_type="stuff")
-    #         res = chain.invoke({"input_documents": relevant_docs})
-    #         return res['output_text'], "Gemini 2.5 Cloud"
-    #     except Exception as e:
-    #         if "429" in str(e):
-    #             st.warning("Gemini Limit Reached. Switching to Groq...")
-    #         else:
-    #             st.error(f"Gemini Error: {e}")
+    """Try Gemini first; if quota hit, fallback to Groq."""
+    gemini = get_gemini()
+    if gemini:
+        try:
+            chain = load_summarize_chain(gemini, chain_type="stuff")
+            res = chain.invoke({"input_documents": relevant_docs})
+            return res['output_text'], "Gemini 2.5 Cloud"
+        except Exception as e:
+            if "429" in str(e):
+                st.warning("Gemini Limit Reached. Switching to Groq...")
+            else:
+                st.error(f"Gemini Error: {e}")
 
-    # Strategy 2: Groq Fallback
     groq = get_groq_fallback()
     if groq:
         try:
@@ -113,16 +133,27 @@ def run_hybrid_summarization(relevant_docs):
 st.title("CNN RAG Intelligence")
 st.info("Status: Primary (Gemini 2.5) | Fallback (Groq Llama 3.3)")
 
+# Initialization Status Bar
 with st.status("Fetching latest news...", expanded=False) as status:
     links = pull_latest_links()
     docs = load_docs_parallel(links)
     vectorstore = load_vector_database(load_embedding_model(), docs)
     status.update(label="System Ready!", state="complete")
 
+# Sidebar Input
 with st.sidebar:
     query = st.text_input("Search Topic:", value="Global Economy")
     run_button = st.button('Generate Summaries')
+    
+    st.markdown("---")
+    if st.sidebar.button('Clear Cache & Refresh'):
+        pull_latest_links.clear()
+        load_docs_parallel.clear()
+        load_vector_database.clear()
+        st.cache_resource.clear()
+        st.rerun()
 
+# Execution Logic
 if (run_button or (query and query != st.session_state.get('last_query', ""))) and vectorstore:
     st.session_state['last_query'] = query
     
@@ -138,4 +169,5 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
             
             with st.expander("Sources Cited"):
                 for d in relevant_docs:
-                    st.caption(d.metadata.get('source', 'CNN'))
+                    st.caption(f"**Source:** {d.metadata.get('source', 'CNN Lite')}")
+                    st.divider()
