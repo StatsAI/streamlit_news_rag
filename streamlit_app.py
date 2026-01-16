@@ -142,7 +142,7 @@ status_ui.success("System Ready!")
 
 # Sidebar Input
 with st.sidebar:
-    query = st.text_input("Search Topic:", value="Global Economy")
+    query = st.text_input("Search Topic:", value="Trump")
     run_button = st.button('Generate Summaries')
     
     st.markdown("---")
@@ -158,7 +158,7 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
     st.session_state['last_query'] = query
     
     with st.spinner(f"Analyzing articles for '{query}'..."):
-        relevant_docs = vectorstore.similarity_search(query, k=3)
+        relevant_docs = vectorstore.similarity_search(query, k=5)
         
         if not relevant_docs:
             st.warning("No relevant articles found.")
