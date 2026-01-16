@@ -3,116 +3,163 @@ import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import sqlite3
 import time
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 
 import streamlit as st
+from unstructured.partition.html import partition_html
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.summarize import load_summarize_chain
 import chromadb
+from chromadb.config import Settings
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 
-# --- Styling & Logo ---
-st.set_page_config(page_title="CNN News RAG", layout="wide")
+# --- Page Config & Styling ---
+st.set_page_config(page_title="CNN Summarizer", layout="wide")
+
 try:
     logo = Image.open('images/picture.png')
-    st.sidebar.image(logo)
-except:
-    pass
+    st.markdown(
+        """
+        <style>
+            [data-testid=stSidebar] [data-testid=stImage]{
+                text-align: center;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: -25px;
+                width: 100%;
+            }
+            .block-container { padding-top: 1rem; }
+        </style>
+        """, unsafe_allow_html=True
+    )
+    with st.sidebar:
+        st.image(logo)
+except FileNotFoundError:
+    st.sidebar.warning("Logo not found. Please check 'images/picture.png' path.")
 
-# --- Robust Scraper ---
-@st.cache_data(ttl="1d")
-def pull_latest_links():
-    base_url = "https://lite.cnn.com"
-    links = []
-    try:
-        response = requests.get(base_url, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        for a in soup.find_all('a', href=True):
-            full_url = urljoin(base_url, a['href'])
-            if "/en/article/" in full_url: # Focus on news articles
-                links.append(full_url)
-        return list(dict.fromkeys(links)) # Unique links
-    except Exception as e:
-        st.error(f"Scraping error: {e}")
-        return []
+# --- Functions ---
 
-# --- Optimized Vector Store ---
 @st.cache_resource()
 def load_embedding_model():
     return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-@st.cache_resource(ttl="1d")
-def get_vectorstore(_docs, _embeddings):
-    if not _docs: return None
-    client = chromadb.PersistentClient(path=".chromadb")
+@st.cache_data(ttl="1d")
+def pull_latest_links():
+    cnn_lite_url = "https://lite.cnn.com/"
     try:
-        client.delete_collection("cnn_embeddings")
-    except:
-        pass
-    return Chroma.from_documents(_docs, _embeddings, collection_name="cnn_embeddings", client=client)
+        elements = partition_html(url=cnn_lite_url)
+        links = []
+        for element in elements:
+            if element.metadata.link_urls:
+                relative_link = element.metadata.link_urls[0]
+                # Ensure we don't double up the URL if it's already absolute
+                full_url = relative_link if relative_link.startswith('http') else f"{cnn_lite_url}{relative_link}"
+                links.append(full_url)
+        return links[1:-2] if len(links) > 2 else links
+    except Exception as e:
+        st.error(f"Failed to pull links: {e}")
+        return []
 
 @st.cache_resource(ttl="1d")
-def load_docs(urls):
-    with ThreadPoolExecutor() as exe:
-        loaders = [UnstructuredURLLoader(urls=[u]) for u in urls]
-        docs = list(exe.map(lambda l: l.load(), loaders))
-    return [item for sublist in docs for item in sublist]
+def get_chroma_client():
+    return chromadb.PersistentClient(path=".chromadb")
+
+@st.cache_resource(ttl="1d")
+def load_vector_database(_embedding_function, _docs):
+    if not _docs:
+        return None
+        
+    chroma_client = get_chroma_client()
+    collection_name = "cnn_doc_embeddings"
+    
+    # Safely clear old collection to avoid schema mismatch or stale data
+    try:
+        chroma_client.delete_collection(collection_name)
+    except:
+        pass 
+    
+    return Chroma.from_documents(
+        documents=_docs, 
+        embedding=_embedding_function, 
+        collection_name=collection_name, 
+        client=chroma_client
+    )
+
+@st.cache_resource(ttl="1d")
+def load_documents_parallel(urls):
+    if not urls:
+        return []
+    with ThreadPoolExecutor() as executor:
+        loaders = [UnstructuredURLLoader(urls=[url]) for url in urls]
+        docs_list = list(executor.map(lambda loader: loader.load(), loaders))
+    return [doc for sublist in docs_list for doc in sublist]
 
 @st.cache_resource
-def load_llm():
-    # User's error log mentions gemini-2.5-flash
-    model_name = "gemini-2.0-flash-lite" 
-    return ChatGoogleGenerativeAI(model=model_name, google_api_key=st.secrets["gemini_api_secret_name"])
+def load_gemini_model():    
+    gem_api_key = st.secrets["gemini_api_secret_name"]
+    return ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash-lite",
+        temperature=0.7,
+        google_api_key=gem_api_key
+    )
 
 # --- Main Logic ---
-st.title("CNN RAG Summarizer")
-st.caption("Quota-optimized version: Uses 1 request per search instead of 5.")
 
+st.title("CNN Article Summarization")
+st.write("Ingesting latest CNN articles into a RAG pipeline for on-demand summarization.")
+
+# 1. Scrape & Process
+with st.status("Initializing Data...", expanded=False) as status:
+    links = pull_latest_links()
+    st.write(f"Found {len(links)} articles.")
+    
+    docs = load_documents_parallel(links)
+    st.write(f"Extracted content from {len(docs)} pages.")
+    
+    embedding_function = load_embedding_model()
+    
+    vectorstore = load_vector_database(embedding_function, docs)
+    
+    llm = load_gemini_model()
+    status.update(label="System Ready!", state="complete")
+
+# 2. Sidebar Input
 with st.sidebar:
-    query = st.text_input("Topic:", "Technology")
-    run_btn = st.button("Generate Summaries")
+    query = st.text_input("Topic Selection", value="Trump", key="query_text")
+    run_button = st.button('Summarize Articles')
 
-# Pipeline Setup
-links = pull_latest_links()
-all_docs = load_docs(links)
-embeddings = load_embedding_model()
-vectorstore = get_vectorstore(all_docs, embeddings)
-llm = load_llm()
+# 3. Execution
+if 'last_query' not in st.session_state:
+    st.session_state['last_query'] = ""
 
-if run_btn and vectorstore:
-    with st.spinner("Retrieving and summarizing..."):
-        # 1. Get relevant docs
-        relevant_docs = vectorstore.similarity_search(query, k=5)
-        
-        # 2. Setup Chain
-        # We use a custom prompt to tell Gemini to summarize EACH document separately in ONE response.
+# Trigger if button pressed OR if a new query is entered
+if (run_button or (query and query != st.session_state['last_query'])) and vectorstore:
+    st.session_state['last_query'] = query
+    
+    with st.spinner(f"Searching for '{query}'..."):
+        query_docs = vectorstore.similarity_search(query, k=5)
         chain = load_summarize_chain(llm, chain_type="stuff")
-        
-        try:
-            # ONE SINGLE API CALL for all 5 documents
-            result = chain.invoke({"input_documents": relevant_docs})
-            
-            st.subheader(f"Summaries for: {query}")
-            st.write(result['output_text'])
-            
-            st.info("Sources utilized:")
-            for d in relevant_docs:
-                st.caption(d.metadata.get('source'))
-                
-        except Exception as e:
-            if "429" in str(e):
-                st.error("📉 **Quota Exhausted:** You've hit the 20 requests/day limit for the Gemini Free Tier. Please wait until tomorrow or upgrade to a paid plan.")
-            else:
-                st.error(f"An error occurred: {e}")
 
-# Cache Clear
-if st.sidebar.button("Refresh News"):
-    st.cache_data.clear()
+        if not query_docs:
+            st.warning("No relevant articles found for that topic.")
+        else:
+            for doc in query_docs:
+                with st.container():
+                    res = chain.invoke({"input_documents": [doc]})
+                    st.markdown(f"### Summary")
+                    st.write(res['output_text'])
+                    st.caption(f"**Source:** {doc.metadata.get('source', 'CNN Lite')}")
+                    st.divider()
+
+# 4. Cache Management
+st.sidebar.markdown("---")
+if st.sidebar.button('Clear Cache & Refresh News'):
+    pull_latest_links.clear()
+    load_documents_parallel.clear()
+    load_vector_database.clear()
     st.cache_resource.clear()
     st.rerun()
