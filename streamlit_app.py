@@ -133,5 +133,48 @@ def run_hybrid_summarization(relevant_docs):
 st.title("CNN RAG Intelligence")
 st.info("Status: Primary (Gemini 2.5) | Fallback (Groq Llama 3.3)")
 
-# Initialization Status Bar
-with st.status("Fetching latest news...", expanded=False) as status
+# Initialization Status Bar (Legacy compatible version)
+loading_placeholder = st.empty()
+loading_placeholder.info("Fetching latest news and initializing database...")
+links = pull_latest_links()
+docs = load_docs_parallel(links)
+vectorstore = load_vector_database(load_embedding_model(), docs)
+loading_placeholder.success("System Ready!")
+
+# Sidebar Input
+with st.sidebar:
+    query = st.text_input("Search Topic:", value="Global Economy")
+    run_button = st.button('Generate Summaries')
+    
+    st.markdown("---")
+    if st.sidebar.button('Clear Cache & Refresh'):
+        pull_latest_links.clear()
+        load_docs_parallel.clear()
+        load_vector_database.clear()
+        st.cache_resource.clear()
+        st.rerun()
+
+# Execution Logic
+if (run_button or (query and query != st.session_state.get('last_query', ""))) and vectorstore:
+    st.session_state['last_query'] = query
+    
+    with st.spinner(f"Analyzing articles for '{query}'..."):
+        relevant_docs = vectorstore.similarity_search(query, k=5)
+        
+        if not relevant_docs:
+            st.warning("No relevant articles found.")
+        else:
+            summary, model_name = run_hybrid_summarization(relevant_docs)
+            st.subheader(f"Analysis via {model_name}")
+            st.markdown(summary)
+            
+            # --- Source link shown after each summary ---
+            st.markdown("### Source Links")
+            for d in relevant_docs:
+                url = d.metadata.get('source', 'CNN Lite')
+                st.write(f"- {url}")
+            
+            with st.expander("Sources Cited (Detailed)"):
+                for d in relevant_docs:
+                    st.caption(f"**Source:** {d.metadata.get('source', 'CNN Lite')}")
+                    st.divider()
