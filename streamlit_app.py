@@ -16,7 +16,7 @@ import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 
-# --- Page Config & Styling (from "old code" UI) ---
+# --- Page Config & Styling ---
 st.set_page_config(page_title="CNN News Intelligence", layout="wide")
 
 try:
@@ -133,9 +133,9 @@ def run_hybrid_summarization(relevant_docs):
 st.title("CNN RAG Intelligence")
 st.info("Status: Primary (Gemini 2.5) | Fallback (Groq Llama 3.3)")
 
-# Initialization Status Bar (Legacy compatible version)
+# Initialization Status Bar (Legacy compatible to avoid SyntaxError)
 loading_placeholder = st.empty()
-loading_placeholder.info("Fetching latest news and initializing database...")
+loading_placeholder.info("Fetching latest news...")
 links = pull_latest_links()
 docs = load_docs_parallel(links)
 vectorstore = load_vector_database(load_embedding_model(), docs)
@@ -166,13 +166,15 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
         else:
             summary, model_name = run_hybrid_summarization(relevant_docs)
             st.subheader(f"Analysis via {model_name}")
+            
+            # Display Summary
             st.markdown(summary)
             
-            # --- Source link shown after each summary ---
-            st.markdown("### Source Links")
-            for d in relevant_docs:
-                url = d.metadata.get('source', 'CNN Lite')
-                st.write(f"- {url}")
+            # Display Source Links directly below
+            st.markdown("---")
+            for doc in relevant_docs:
+                source_url = doc.metadata.get('source', 'CNN Lite')
+                st.markdown(f"**Source:** {source_url}")
             
             with st.expander("Sources Cited (Detailed)"):
                 for d in relevant_docs:
