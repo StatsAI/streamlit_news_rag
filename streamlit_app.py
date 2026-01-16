@@ -104,19 +104,7 @@ def get_groq_fallback():
     except: return None
 
 def run_hybrid_summarization(relevant_docs):
-    # """Try Gemini first; if quota hit, fallback to Groq."""
-    # gemini = get_gemini()
-    # if gemini:
-    #      try:
-    #          chain = load_summarize_chain(gemini, chain_type="stuff")
-    #          res = chain.invoke({"input_documents": relevant_docs})
-    #          return res['output_text'], "Gemini 2.5 Cloud"
-    #      except Exception as e:
-    #          if "429" in str(e):
-    #              st.warning("Gemini Limit Reached. Switching to Groq...")
-    #          else:
-    #              st.error(f"Gemini Error: {e}")
-
+    # This function now expects a list containing a single document for granular reporting
     groq = get_groq_fallback()
     if groq:
         try:
@@ -133,13 +121,13 @@ def run_hybrid_summarization(relevant_docs):
 st.title("CNN RAG Intelligence")
 st.info("Status: Primary (Gemini 2.5) | Fallback (Groq Llama 3.3)")
 
-# Initialization Status Bar (Legacy compatible to avoid SyntaxError)
-loading_placeholder = st.empty()
-loading_placeholder.info("Fetching latest news...")
+# Initialization Status (Using st.empty to avoid SyntaxError on older Streamlit versions)
+status_ui = st.empty()
+status_ui.info("Fetching latest news...")
 links = pull_latest_links()
 docs = load_docs_parallel(links)
 vectorstore = load_vector_database(load_embedding_model(), docs)
-loading_placeholder.success("System Ready!")
+status_ui.success("System Ready!")
 
 # Sidebar Input
 with st.sidebar:
@@ -164,19 +152,16 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
         if not relevant_docs:
             st.warning("No relevant articles found.")
         else:
-            summary, model_name = run_hybrid_summarization(relevant_docs)
-            st.subheader(f"Analysis via {model_name}")
-            
-            # Display Summary
-            st.markdown(summary)
-            
-            # Display Source Links directly below
-            st.markdown("---")
             for doc in relevant_docs:
+                # Summarize each document individually to pair it with its source
+                summary_text, model_name = run_hybrid_summarization([doc])
                 source_url = doc.metadata.get('source', 'CNN Lite')
-                st.markdown(f"**Source:** {source_url}")
-            
-            with st.expander("Sources Cited (Detailed)"):
-                for d in relevant_docs:
-                    st.caption(f"**Source:** {d.metadata.get('source', 'CNN Lite')}")
-                    st.divider()
+                
+                # Apply the requested format
+                st.markdown(f"### Summary: {query.capitalize()} Perspective")
+                st.write(f"**Summary:**")
+                st.write(summary_text)
+                st.write(f"**Source:** {source_url}")
+                st.divider()
+
+            st.caption(f"Generated via {model_name}")
