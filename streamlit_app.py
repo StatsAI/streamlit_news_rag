@@ -12,6 +12,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain.chains.summarize import load_summarize_chain
+from langchain.prompts import PromptTemplate
 import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
@@ -103,8 +104,19 @@ def get_groq_fallback():
         )
     except: return None
 
+def get_article_topic(doc):
+    """Helper function to extract a short topic from the article text."""
+    llm = get_groq_fallback() # Using Groq for quick extraction
+    if not llm: return "Article"
+    
+    prompt = f"Identify the main topic of this article in 5 words or less: {doc.page_content[:1000]}"
+    try:
+        response = llm.invoke(prompt)
+        return response.content.strip().replace(".", "")
+    except:
+        return "Article Content"
+
 def run_hybrid_summarization(relevant_docs):
-    # This function now expects a list containing a single document for granular reporting
     groq = get_groq_fallback()
     if groq:
         try:
@@ -121,7 +133,6 @@ def run_hybrid_summarization(relevant_docs):
 st.title("CNN RAG Intelligence")
 st.info("Status: Primary (Gemini 2.5) | Fallback (Groq Llama 3.3)")
 
-# Initialization Status (Using st.empty to avoid SyntaxError on older Streamlit versions)
 status_ui = st.empty()
 status_ui.info("Fetching latest news...")
 links = pull_latest_links()
@@ -153,13 +164,15 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
             st.warning("No relevant articles found.")
         else:
             for doc in relevant_docs:
-                # Summarize each document individually to pair it with its source
+                # Step 1: Extract Topic
+                topic = get_article_topic(doc)
+                
+                # Step 2: Generate Summary
                 summary_text, model_name = run_hybrid_summarization([doc])
                 source_url = doc.metadata.get('source', 'CNN Lite')
                 
-                # Apply the requested format
-                #st.markdown(f"### Summary: {query.capitalize()} Perspective")
-                st.write(f"**Summary:**")
+                # Step 3: Display with requested format
+                st.markdown(f"### Summary: {topic}")
                 st.write(summary_text)
                 st.write(f"**Source:** {source_url}")
                 st.divider()
