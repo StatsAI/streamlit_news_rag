@@ -12,6 +12,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain.chains.summarize import load_summarize_chain
+from langchain.prompts import PromptTemplate
 import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
@@ -84,84 +85,60 @@ def load_docs_parallel(urls):
 # --- Hybrid LLM Logic (Gemini -> Groq Fallback) ---
 
 @st.cache_resource
-def get_gemini():
-    try:
-        return ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-lite",
-            google_api_key=st.secrets["gemini_api_secret_name"],
-            temperature=0.7
-        )
-    except: return None
-
-@st.cache_resource
 def get_groq_fallback():
     try:
         return ChatGroq(
             model_name="llama-3.3-70b-versatile",
             groq_api_key=st.secrets["groq_api_key"],
-            temperature=0.7
+            temperature=0.2 # Lower temperature for better headline extraction
         )
     except: return None
 
-def run_hybrid_summarization(relevant_docs):
-    # This function now expects a list containing a single document for granular reporting
+def run_individual_summary(doc):
+    """Summarizes a single document and returns (Headline, Summary)."""
     groq = get_groq_fallback()
-    if groq:
-        try:
-            chain = load_summarize_chain(groq, chain_type="stuff")
-            res = chain.invoke({"input_documents": relevant_docs})
-            return res['output_text'], "Groq (Llama 3.3)"
-        except Exception as e:
-            return f"Error: All models failed. ({e})", "None"
+    if not groq:
+        return "Error", "No model available."
+
+    # Custom prompt to extract the headline as the name
+    prompt_template = """
+    Identify the main headline/article title and provide a concise summary of the following text.
     
-    return "Error: No models available. Check your API keys.", "None"
+    TEXT:
+    {text}
+    
+    RESPONSE FORMAT:
+    HEADLINE: [The Article Headline]
+    SUMMARY: [A concise 3-4 sentence summary]
+    """
+    PROMPT = PromptTemplate(template=prompt_template, input_variables=["text"])
+    
+    try:
+        chain = load_summarize_chain(groq, chain_type="stuff", prompt=PROMPT)
+        res = chain.invoke({"input_documents": [doc]})
+        output = res['output_text']
+        
+        # Parse headline and summary from output
+        parts = output.split("SUMMARY:")
+        headline = parts[0].replace("HEADLINE:", "").strip()
+        summary = parts[1].strip() if len(parts) > 1 else output
+        return headline, summary
+    except Exception as e:
+        return "Error", str(e)
 
 # --- UI Layout ---
 
 st.title("CNN RAG Intelligence")
-st.info("Status: Primary (Gemini 2.5) | Fallback (Groq Llama 3.3)")
 
-# Initialization Status (Using st.empty to avoid SyntaxError on older Streamlit versions)
-status_ui = st.empty()
-status_ui.info("Fetching latest news...")
+# Fixed Initialization (No st.status to avoid syntax error)
+loading_area = st.empty()
+loading_area.info("Initializing system and fetching latest news...")
 links = pull_latest_links()
 docs = load_docs_parallel(links)
 vectorstore = load_vector_database(load_embedding_model(), docs)
-status_ui.success("System Ready!")
+loading_area.success("System Ready!")
 
 # Sidebar Input
 with st.sidebar:
-    query = st.text_input("Search Topic:", value="Global Economy")
+    query = st.text_input("Search Topic:", value="Trump")
     run_button = st.button('Generate Summaries')
-    
-    st.markdown("---")
-    if st.sidebar.button('Clear Cache & Refresh'):
-        pull_latest_links.clear()
-        load_docs_parallel.clear()
-        load_vector_database.clear()
-        st.cache_resource.clear()
-        st.rerun()
-
-# Execution Logic
-if (run_button or (query and query != st.session_state.get('last_query', ""))) and vectorstore:
-    st.session_state['last_query'] = query
-    
-    with st.spinner(f"Analyzing articles for '{query}'..."):
-        relevant_docs = vectorstore.similarity_search(query, k=5)
-        
-        if not relevant_docs:
-            st.warning("No relevant articles found.")
-        else:
-            for doc in relevant_docs:
-                # Summarize each document individually to pair it with its source
-                summary_text, model_name = run_hybrid_summarization([doc])
-                source_url = doc.metadata.get('source', 'CNN Lite')
-                
-                # Apply the requested format
-                st.markdown(f"### Summary: {query.capitalize()} Perspective")
-                st.write(f"**Summary:**")
-                st.write(summary_text)
-                st.write(f"**Source:** {source_url}")
-                st.divider()
-
-            st.caption(f"Generated via {model_name}")
