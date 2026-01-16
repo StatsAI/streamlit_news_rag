@@ -1,4 +1,4 @@
-streamlit>=1.27.0
+streamlit
 sentence-transformers
 langchain
 langchain-community
