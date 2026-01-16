@@ -15,201 +15,151 @@ import chromadb
 from chromadb.config import Settings
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
-from PIL import ImageOps
 
-#logo = Image.open('images/picture.png')
-#st.image(logo)
-#newsize = (95, 95)
-#logo = logo.resize(newsize)
+# --- Page Config & Styling ---
+st.set_page_config(page_title="CNN Summarizer", layout="wide")
 
-# # Centering the logo
-# col1, col2, col3 = st.columns([1, 2, 1])  # Create columns with relative widths
-# with col2:  # Place the logo in the middle column
-#     st.image(logo)
-
-logo = Image.open('images/picture.png')
-#newsize = (95, 95)
-#logo = logo.resize(newsize)
-
-st.markdown(
-    """
-    <style>
-        [data-testid=stSidebar] [data-testid=stImage]{
-            text-align: center;
-            display: block;
-            margin-left: 30px;
-            margin-right: auto;
-	    margin-top: -25px;
-            width: 100%;
-	    #margin: 0;	         		
-        }
-    </style>
-    """, unsafe_allow_html=True
-)
-
-with st.sidebar:
-    st.image(logo)
-
-st.markdown("""
+try:
+    logo = Image.open('images/picture.png')
+    st.markdown(
+        """
         <style>
-               .block-container {
-		    padding-top: 0;
-                }
-        </style>
-        """, unsafe_allow_html=True)
-
-#st.sidebar.write('')
-#st.sidebar.write('')
-
-with st.sidebar:
-    st.markdown("""
-        <style>
-            [data-testid=stTextInput] {
-                height: -5px;  # Adjust the height as needed
+            [data-testid=stSidebar] [data-testid=stImage]{
+                text-align: center;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: -25px;
+                width: 100%;
             }
+            .block-container { padding-top: 1rem; }
         </style>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True
+    )
+    with st.sidebar:
+        st.image(logo)
+except FileNotFoundError:
+    st.sidebar.warning("Logo not found. Please check 'images/picture.png' path.")
 
-    query = st.text_input("Topic Selection: Enter the topic you want to summarize articles for", "Trump", key = "query_text")
+# --- Functions ---
 
-# Streamlit app title
-st.title("CNN Article Summarization via LangChain, RAG, and Gemini")
-st.write("How this app works: This app ingests the latest articles from cnn into a chromadb vector database using the unstructured library. The user's query retrieves the 5 most relevant articles from the vector database. These results are passed to an LLM as context for summarization")
-st.write('<a href="https://lite.cnn.com/">Click here to visit CNN Lite!</a>', unsafe_allow_html=True)
-
-# Cache the embedding model
 @st.cache_resource()
 def load_embedding_model():
     return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-# Cache the links
-@st.cache_data
-def pull_latest_links(ttl="1d"):
+@st.cache_data(ttl="1d")
+def pull_latest_links():
     cnn_lite_url = "https://lite.cnn.com/"
-    elements = partition_html(url=cnn_lite_url)
-    links = []
-
-    for element in elements:
-        try:
+    try:
+        elements = partition_html(url=cnn_lite_url)
+        links = []
+        for element in elements:
             if element.metadata.link_urls:
                 relative_link = element.metadata.link_urls[0]
-                links.append(f"{cnn_lite_url}{relative_link}")
-        except IndexError:
-            continue
+                # Ensure we don't double up the URL if it's already absolute
+                full_url = relative_link if relative_link.startswith('http') else f"{cnn_lite_url}{relative_link}"
+                links.append(full_url)
+        return links[1:-2] if len(links) > 2 else links
+    except Exception as e:
+        st.error(f"Failed to pull links: {e}")
+        return []
 
-    links = links[1:-2]
-    return links
-
-# Cache the ChromaDB client
 @st.cache_resource(ttl="1d")
 def get_chroma_client():
-    return chromadb.PersistentClient(path=".chromadb")  # Use PersistentClient and path
+    return chromadb.PersistentClient(path=".chromadb")
 
-# Cache the vector database
 @st.cache_resource(ttl="1d")
 def load_vector_database(_embedding_function, _docs):
+    if not _docs:
+        return None
+        
     chroma_client = get_chroma_client()
+    collection_name = "cnn_doc_embeddings"
     
-    # Delete existing collection if it exists
+    # Safely clear old collection to avoid schema mismatch or stale data
     try:
-        chroma_client.delete_collection("cnn_doc_embeddings")
-    except ValueError:
-        pass  # Collection does not exist
+        chroma_client.delete_collection(collection_name)
+    except:
+        pass 
     
-    return Chroma.from_documents(_docs, _embedding_function, collection_name="cnn_doc_embeddings", client=chroma_client)
+    return Chroma.from_documents(
+        documents=_docs, 
+        embedding=_embedding_function, 
+        collection_name=collection_name, 
+        client=chroma_client
+    )
 
-# Load documents in parallel
 @st.cache_resource(ttl="1d")
 def load_documents_parallel(urls):
+    if not urls:
+        return []
     with ThreadPoolExecutor() as executor:
-        loaders = [UnstructuredURLLoader(urls=[url], show_progress_bar=False) for url in urls]
-        docs = list(executor.map(lambda loader: loader.load(), loaders))
-    return [doc for sublist in docs for doc in sublist]  # Flatten the list
+        loaders = [UnstructuredURLLoader(urls=[url]) for url in urls]
+        docs_list = list(executor.map(lambda loader: loader.load(), loaders))
+    return [doc for sublist in docs_list for doc in sublist]
 
-# Load gemini model
 @st.cache_resource
 def load_gemini_model():    
     gem_api_key = st.secrets["gemini_api_secret_name"]
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash",
-                                 temperature=0.7,
-                                 max_tokens=None,
-                                 timeout=None,
-                                 max_retries=2,
-                                 google_api_key=gem_api_key)
-    return llm
+    return ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash",
+        temperature=0.7,
+        google_api_key=gem_api_key
+    )
 
-start = time.time()
-links = pull_latest_links()
-st.session_state['links'] = links
-end = time.time()
-diff = end - start
-#st.sidebar.write(f"Latest links pulled in {round(diff,3)} seconds")
+# --- Main Logic ---
 
-start = time.time()
-docs = load_documents_parallel(links)
-end = time.time()
-diff = end - start
-#st.sidebar.write(f"Content extracted from links in {round(diff,3)} seconds")
+st.title("CNN Article Summarization")
+st.write("Ingesting latest CNN articles into a RAG pipeline for on-demand summarization.")
 
-start = time.time()
-embedding_function = load_embedding_model()
-end = time.time()
-diff = end - start
-#st.sidebar.write(f"Embedding model loaded in {round(diff,3)} seconds")
+# 1. Scrape & Process
+with st.status("Initializing Data...", expanded=False) as status:
+    links = pull_latest_links()
+    st.write(f"Found {len(links)} articles.")
+    
+    docs = load_documents_parallel(links)
+    st.write(f"Extracted content from {len(docs)} pages.")
+    
+    embedding_function = load_embedding_model()
+    
+    vectorstore = load_vector_database(embedding_function, docs)
+    
+    llm = load_gemini_model()
+    status.update(label="System Ready!", state="complete")
 
-#st.write("Embedding model loaded!")
-start = time.time()
-vectorstore = load_vector_database(embedding_function, docs)
-end = time.time()
-diff = end - start
-#st.sidebar.write(f"Vector database loaded in {round(diff,3)} seconds")
+# 2. Sidebar Input
+with st.sidebar:
+    query = st.text_input("Topic Selection", value="Trump", key="query_text")
+    run_button = st.button('Summarize Articles')
 
-start = time.time()
-llm = load_gemini_model()
-end = time.time()
-diff = end - start
-#st.sidebar.write(f"Gemini model loaded in {round(diff,3)} seconds")
-
+# 3. Execution
 if 'last_query' not in st.session_state:
     st.session_state['last_query'] = ""
 
-if 'cache_cleared' not in st.session_state:
-    st.session_state['cache_cleared'] = False
+# Trigger if button pressed OR if a new query is entered
+if (run_button or (query and query != st.session_state['last_query'])) and vectorstore:
+    st.session_state['last_query'] = query
+    
+    with st.spinner(f"Searching for '{query}'..."):
+        query_docs = vectorstore.similarity_search(query, k=5)
+        chain = load_summarize_chain(llm, chain_type="stuff")
 
-if st.sidebar.button('Summarize Articles') or (query and query != st.session_state['last_query']):
+        if not query_docs:
+            st.warning("No relevant articles found for that topic.")
+        else:
+            for doc in query_docs:
+                with st.container():
+                    res = chain.invoke({"input_documents": [doc]})
+                    st.markdown(f"### Summary")
+                    st.write(res['output_text'])
+                    st.caption(f"**Source:** {doc.metadata.get('source', 'CNN Lite')}")
+                    st.divider()
 
-    st.session_state['last_query'] = query  # Update the last query state
-    query_docs = vectorstore.similarity_search(query, k=5)
-    chain = load_summarize_chain(llm, chain_type="stuff")
-
-    for doc in query_docs:
-        source = doc.metadata
-        result = chain.invoke([doc])
-        st.write(result['output_text'])
-        string = str(list(source.values())[0])
-        st.write("Source: " + string, unsafe_allow_html=True)
-        st.write('')
-
-st.sidebar.write("The link cache is updated once a day. Pressing the below button bypasses this, at the cost of a minute to download/load the vector database")
-
-if st.sidebar.button('Clear cache & get latest links!'):
+# 4. Cache Management
+st.sidebar.markdown("---")
+if st.sidebar.button('Clear Cache & Refresh News'):
     pull_latest_links.clear()
     load_documents_parallel.clear()
     load_vector_database.clear()
-    st.session_state['cache_cleared'] = True  # Set the flag
+    st.cache_resource.clear()
     st.rerun()
-
-if st.session_state['cache_cleared']:
-    st.session_state['cache_cleared'] = False  # Reset the flag
-    default_query = st.session_state['last_query']
-    st.session_state['last_query'] = default_query
-    query_docs = vectorstore.similarity_search(default_query, k=5)
-    chain = load_summarize_chain(llm, chain_type="stuff")
-
-    for doc in query_docs:
-        source = doc.metadata
-        result = chain.invoke([doc])
-        st.write(result['output_text'])
-        string = str(list(source.values())[0])
-        st.write("Source: " + string, unsafe_allow_html=True)
-        st.write('')
