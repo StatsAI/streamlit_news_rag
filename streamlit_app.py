@@ -99,18 +99,18 @@ def get_local_phi():
     return ChatOllama(model="phi4-mini", temperature=0.7)
 
 def run_hybrid_summarization(relevant_docs):
-    """Try Gemini first (1 request for all docs), fallback to Phi-4 if 429 occurs."""
-    gemini = get_gemini()
-    if gemini:
-        try:
-            chain = load_summarize_chain(gemini, chain_type="stuff")
-            res = chain.invoke({"input_documents": relevant_docs})
-            return res['output_text'], "Gemini 2.5 Cloud"
-        except Exception as e:
-            if "429" in str(e):
-                st.warning("Cloud Quota Exceeded. Falling back to Local Phi-4 Mini...")
-            else:
-                st.error(f"Cloud Error: {e}")
+    # """Try Gemini first (1 request for all docs), fallback to Phi-4 if 429 occurs."""
+    # gemini = get_gemini()
+    # if gemini:
+    #     try:
+    #         chain = load_summarize_chain(gemini, chain_type="stuff")
+    #         res = chain.invoke({"input_documents": relevant_docs})
+    #         return res['output_text'], "Gemini 2.5 Cloud"
+    #     except Exception as e:
+    #         if "429" in str(e):
+    #             st.warning("Cloud Quota Exceeded. Falling back to Local Phi-4 Mini...")
+    #         else:
+    #             st.error(f"Cloud Error: {e}")
     
     # Fallback to local
     try:
