@@ -119,7 +119,7 @@ def run_hybrid_summarization(relevant_docs):
         res = chain.invoke({"input_documents": relevant_docs})
         return res['output_text'], "Local Phi-4 Mini-Flash"
     except Exception as e:
-        return f"Error: Both models failed. Is Ollama running? ({e})", "None"
+        return f"Error: local_llm failed. Is Ollama running? ({e})", "None"
 
 # --- Main App Execution ---
 
