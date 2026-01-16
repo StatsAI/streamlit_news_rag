@@ -158,7 +158,7 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
                 source_url = doc.metadata.get('source', 'CNN Lite')
                 
                 # Apply the requested format
-                st.markdown(f"### Summary: {query.capitalize()} Perspective")
+                #st.markdown(f"### Summary: {query.capitalize()} Perspective")
                 st.write(f"**Summary:**")
                 st.write(summary_text)
                 st.write(f"**Source:** {source_url}")
