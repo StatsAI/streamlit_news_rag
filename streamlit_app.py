@@ -98,7 +98,7 @@ def get_gemini():
 def get_groq_fallback():
     try:
         return ChatGroq(
-            model_name="meta-llama/llama-guard-4-12b",
+            model_name="whisper-large-v3-turbo",
             groq_api_key=st.secrets["groq_api_key"],
             temperature=0.7
         )
