@@ -98,7 +98,7 @@ def get_gemini():
 def get_groq_fallback():
     try:
         return ChatGroq(
-            model_name="openai/gpt-oss-120b",
+            model_name="meta-llama/llama-4-maverick-17b-128e-instruct",
             groq_api_key=st.secrets["groq_api_key"],
             temperature=0.7
         )
