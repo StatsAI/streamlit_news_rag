@@ -107,15 +107,15 @@ def run_hybrid_summarization(relevant_docs):
     # """Try Gemini first; if quota hit, fallback to Groq."""
     # gemini = get_gemini()
     # if gemini:
-    #     try:
-    #         chain = load_summarize_chain(gemini, chain_type="stuff")
-    #         res = chain.invoke({"input_documents": relevant_docs})
-    #         return res['output_text'], "Gemini 2.5 Cloud"
-    #     except Exception as e:
-    #         if "429" in str(e):
-    #             st.warning("Gemini Limit Reached. Switching to Groq...")
-    #         else:
-    #             st.error(f"Gemini Error: {e}")
+    #      try:
+    #          chain = load_summarize_chain(gemini, chain_type="stuff")
+    #          res = chain.invoke({"input_documents": relevant_docs})
+    #          return res['output_text'], "Gemini 2.5 Cloud"
+    #      except Exception as e:
+    #          if "429" in str(e):
+    #              st.warning("Gemini Limit Reached. Switching to Groq...")
+    #          else:
+    #              st.error(f"Gemini Error: {e}")
 
     groq = get_groq_fallback()
     if groq:
@@ -134,40 +134,4 @@ st.title("CNN RAG Intelligence")
 st.info("Status: Primary (Gemini 2.5) | Fallback (Groq Llama 3.3)")
 
 # Initialization Status Bar
-with st.status("Fetching latest news...", expanded=False) as status:
-    links = pull_latest_links()
-    docs = load_docs_parallel(links)
-    vectorstore = load_vector_database(load_embedding_model(), docs)
-    status.update(label="System Ready!", state="complete")
-
-# Sidebar Input
-with st.sidebar:
-    query = st.text_input("Search Topic:", value="Global Economy")
-    run_button = st.button('Generate Summaries')
-    
-    st.markdown("---")
-    if st.sidebar.button('Clear Cache & Refresh'):
-        pull_latest_links.clear()
-        load_docs_parallel.clear()
-        load_vector_database.clear()
-        st.cache_resource.clear()
-        st.rerun()
-
-# Execution Logic
-if (run_button or (query and query != st.session_state.get('last_query', ""))) and vectorstore:
-    st.session_state['last_query'] = query
-    
-    with st.spinner(f"Analyzing articles for '{query}'..."):
-        relevant_docs = vectorstore.similarity_search(query, k=5)
-        
-        if not relevant_docs:
-            st.warning("No relevant articles found.")
-        else:
-            summary, model_name = run_hybrid_summarization(relevant_docs)
-            st.subheader(f"Analysis via {model_name}")
-            st.markdown(summary)
-            
-            with st.expander("Sources Cited"):
-                for d in relevant_docs:
-                    st.caption(f"**Source:** {d.metadata.get('source', 'CNN Lite')}")
-                    st.divider()
+with st.status("Fetching latest news...", expanded=False) as status
