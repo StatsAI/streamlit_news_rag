@@ -4,7 +4,7 @@ langchain
 langchain-community
 langchain-google-genai
 langchain-huggingface
-langchain-ollama  # Added for local model support
+langchain-groq
 pysqlite3-binary
 chromadb
 unstructured
