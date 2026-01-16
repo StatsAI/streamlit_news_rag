@@ -102,7 +102,7 @@ def load_documents_parallel(urls):
 def load_gemini_model():    
     gem_api_key = st.secrets["gemini_api_secret_name"]
     return ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         temperature=0.7,
         google_api_key=gem_api_key
     )
