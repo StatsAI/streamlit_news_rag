@@ -10,36 +10,14 @@ from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_ollama import ChatOllama
+from langchain_groq import ChatGroq
 from langchain.chains.summarize import load_summarize_chain
 import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 
-# --- Page Config & Styling ---
+# --- Page Config ---
 st.set_page_config(page_title="CNN News Intelligence", layout="wide")
-
-try:
-    logo = Image.open('images/picture.png')
-    st.markdown(
-        """
-        <style>
-            [data-testid=stSidebar] [data-testid=stImage]{
-                text-align: center;
-                display: block;
-                margin-left: auto;
-                margin-right: auto;
-                margin-top: -25px;
-                width: 100%;
-            }
-            .block-container { padding-top: 1rem; }
-        </style>
-        """, unsafe_allow_html=True
-    )
-    with st.sidebar:
-        st.image(logo)
-except FileNotFoundError:
-    pass
 
 # --- Backend Functions ---
 
@@ -81,50 +59,59 @@ def load_docs_parallel(urls):
         docs_list = list(executor.map(lambda l: l.load(), loaders))
     return [doc for sublist in docs_list for doc in sublist]
 
-# --- Hybrid LLM Logic ---
+# --- Hybrid LLM Logic (Gemini -> Groq Fallback) ---
 
 @st.cache_resource
 def get_gemini():
     try:
         return ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-lite", # Latest 2026 Free Tier Model
+            model="gemini-2.5-flash-lite",
             google_api_key=st.secrets["gemini_api_secret_name"],
             temperature=0.7
         )
     except: return None
 
 @st.cache_resource
-def get_local_phi():
-    # Requires 'ollama run phi4-mini' to be active locally
-    return ChatOllama(model="phi4-mini", temperature=0.7)
+def get_groq_fallback():
+    try:
+        return ChatGroq(
+            model_name="llama-3.3-70b-versatile",
+            groq_api_key=st.secrets["groq_api_key"],
+            temperature=0.7
+        )
+    except: return None
 
 def run_hybrid_summarization(relevant_docs):
-    # """Try Gemini first (1 request for all docs), fallback to Phi-4 if 429 occurs."""
-    # gemini = get_gemini()
-    # if gemini:
-    #     try:
-    #         chain = load_summarize_chain(gemini, chain_type="stuff")
-    #         res = chain.invoke({"input_documents": relevant_docs})
-    #         return res['output_text'], "Gemini 2.5 Cloud"
-    #     except Exception as e:
-    #         if "429" in str(e):
-    #             st.warning("Cloud Quota Exceeded. Falling back to Local Phi-4 Mini...")
-    #         else:
-    #             st.error(f"Cloud Error: {e}")
-    
-    # Fallback to local
-    try:
-        local_llm = get_local_phi()
-        chain = load_summarize_chain(local_llm, chain_type="stuff")
-        res = chain.invoke({"input_documents": relevant_docs})
-        return res['output_text'], "Local Phi-4 Mini-Flash"
-    except Exception as e:
-        return f"Error: local_llm failed. Is Ollama running? ({e})", "None"
+    """Try Gemini first; if quota is hit, use Groq."""
+    # Strategy 1: Gemini
+    gemini = get_gemini()
+    if gemini:
+        try:
+            chain = load_summarize_chain(gemini, chain_type="stuff")
+            res = chain.invoke({"input_documents": relevant_docs})
+            return res['output_text'], "Gemini 2.5 Cloud"
+        except Exception as e:
+            if "429" in str(e):
+                st.warning("Gemini Limit Reached. Switching to Groq...")
+            else:
+                st.error(f"Gemini Error: {e}")
 
-# --- Main App Execution ---
+    # Strategy 2: Groq Fallback
+    groq = get_groq_fallback()
+    if groq:
+        try:
+            chain = load_summarize_chain(groq, chain_type="stuff")
+            res = chain.invoke({"input_documents": relevant_docs})
+            return res['output_text'], "Groq (Llama 3.3)"
+        except Exception as e:
+            return f"Error: All models failed. ({e})", "None"
+    
+    return "Error: No models available. Check your API keys.", "None"
+
+# --- UI Layout ---
 
 st.title("CNN RAG Intelligence")
-st.info("Uses Gemini 2.5 (Cloud) with local Phi-4 (Ollama) as a fallback.")
+st.info("Status: Primary (Gemini 2.5) | Fallback (Groq Llama 3.3)")
 
 with st.status("Fetching latest news...", expanded=False) as status:
     links = pull_latest_links()
@@ -146,7 +133,6 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
             st.warning("No relevant articles found.")
         else:
             summary, model_name = run_hybrid_summarization(relevant_docs)
-            
             st.subheader(f"Analysis via {model_name}")
             st.markdown(summary)
             
