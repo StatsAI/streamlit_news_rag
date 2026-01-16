@@ -82,19 +82,19 @@ def get_groq_fallback():
     except: return None
 
 def run_hybrid_summarization(relevant_docs):
-    """Try Gemini first; if quota is hit, use Groq."""
-    # Strategy 1: Gemini
-    gemini = get_gemini()
-    if gemini:
-        try:
-            chain = load_summarize_chain(gemini, chain_type="stuff")
-            res = chain.invoke({"input_documents": relevant_docs})
-            return res['output_text'], "Gemini 2.5 Cloud"
-        except Exception as e:
-            if "429" in str(e):
-                st.warning("Gemini Limit Reached. Switching to Groq...")
-            else:
-                st.error(f"Gemini Error: {e}")
+    # """Try Gemini first; if quota is hit, use Groq."""
+    # # Strategy 1: Gemini
+    # gemini = get_gemini()
+    # if gemini:
+    #     try:
+    #         chain = load_summarize_chain(gemini, chain_type="stuff")
+    #         res = chain.invoke({"input_documents": relevant_docs})
+    #         return res['output_text'], "Gemini 2.5 Cloud"
+    #     except Exception as e:
+    #         if "429" in str(e):
+    #             st.warning("Gemini Limit Reached. Switching to Groq...")
+    #         else:
+    #             st.error(f"Gemini Error: {e}")
 
     # Strategy 2: Groq Fallback
     groq = get_groq_fallback()
