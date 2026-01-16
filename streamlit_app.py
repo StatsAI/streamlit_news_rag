@@ -98,7 +98,7 @@ def get_gemini():
 def get_groq_fallback():
     try:
         return ChatGroq(
-            model_name="llama-3.1-8b-instant",
+            model_name="meta-llama/llama-guard-4-12b",
             groq_api_key=st.secrets["groq_api_key"],
             temperature=0.7
         )
