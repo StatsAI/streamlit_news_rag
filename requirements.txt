@@ -1,3 +1,4 @@
+pip
 streamlit
 sentence-transformers
 langchain
