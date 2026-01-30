@@ -9,4 +9,4 @@ langchain-groq
 pysqlite3-binary
 chromadb
 unstructured
-Pillow==9.5.0
+Pillow>=10.0.0
