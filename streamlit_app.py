@@ -12,7 +12,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_classic.chains.summarize import load_summarize_chain
-from langchain.prompts import PromptTemplate
+from langchain_classic.prompts import PromptTemplate
 import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
