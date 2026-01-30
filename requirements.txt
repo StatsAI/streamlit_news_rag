@@ -1,7 +1,7 @@
 pip
 streamlit
 sentence-transformers
-langchain
+#langchain
 langchain-classic
 langchain-community
 langchain-google-genai
