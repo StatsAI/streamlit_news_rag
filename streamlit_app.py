@@ -11,7 +11,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
-from langchain.chains.summarize import load_summarize_chain
+from langchain_classic.chains.summarize import load_summarize_chain
 from langchain.prompts import PromptTemplate
 import chromadb
 from concurrent.futures import ThreadPoolExecutor
