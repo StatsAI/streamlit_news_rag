@@ -231,8 +231,17 @@ def get_article_topic(doc):
         return "Article Content"
 
 def run_hybrid_summarization(relevant_docs):
-    #groq = get_groq_fallback()
-    groq = get_openai()
+    groq = get_groq_fallback()
+    open_ai = get_openai()
+    
+    if open_ai:
+        try:
+            chain = load_summarize_chain(open_ai, chain_type="stuff")
+            res = chain.invoke({"input_documents": relevant_docs})
+            return res['output_text'], "OpenAI (GPT-5-Mini)"
+        except Exception as e:
+            return f"Error: All models failed. ({e})", "None"
+    
     if groq:
         try:
             chain = load_summarize_chain(groq, chain_type="stuff")
@@ -246,7 +255,7 @@ def run_hybrid_summarization(relevant_docs):
 # --- UI Layout ---
 
 st.title("CNN RAG Intelligence")
-st.info("Status: Primary (Gemini 2.5) | Fallback (Groq Llama 3.3)")
+st.info("Status: Primary (OpenAI GPT-5-Mini) | Fallback (Groq Llama 3.3)")
 
 status_ui = st.empty()
 status_ui.info("Fetching latest news...")
