@@ -190,11 +190,10 @@ def load_docs_parallel(urls):
 @st.cache_resource
 def get_openai():
     try:
-        return ChatGoogleGenerativeAI(
+        return ChatOpenAI(
+            model="gpt-5",
             api_key = st.secrets.get("open_ai_api_key", "")
-            llm = ChatOpenAI(model="gpt-5", temperature=0, api_key)
-        
-
+            temperature=0.7
         )
     except: return None
         
