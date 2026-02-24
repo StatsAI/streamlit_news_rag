@@ -133,46 +133,36 @@ def load_docs_parallel(urls):
 
     def fetch(url):
         try:
-            headers = {'User-Agent': 'Mozilla/5.0'} # Added header to avoid basic blocks
+            headers = {'User-Agent': 'Mozilla/5.0'}
             response = requests.get(url, timeout=10, headers=headers)
             soup = BeautifulSoup(response.text, "html.parser")
     
-            # Target the specific container for article text
-            # On CNN Lite, main content is often inside a specific class or tag
-            # We explicitly remove common boilerplate elements before extracting text
-            for script in soup(["script", "style", "nav", "footer", "header"]):
-                script.extract()
+            # 1. Remove navigation/metadata elements
+            for element in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                element.extract()
             
-            # Look for the main article content area
-            # If 'article__content' doesn't exist, we fallback to the body or main
-            article = soup.find("main") or soup.find("article") or soup.find("div", class_="article__content") or soup
-    
-            # Extract paragraphs, filtering out short or unwanted text
-            paragraphs = []
-            for p in article.find_all("p"):
-                text = p.get_text().strip()
-                # Exclude common boilerplate phrases
-                if len(text) > 50 and not any(phrase in text.lower() for phrase in ["updated", "click here", "read more"]):
-                    paragraphs.append(text)
+            # 2. Extract paragraphs
+            paragraphs = [p.get_text().strip() for p in soup.find_all("p")]
             
-            text = " ".join(paragraphs)
-    
-            # Minimum length check remains
-            if len(text) < 300: 
+            # 3. Join and clean the text
+            full_text = "\n".join([p for p in paragraphs if len(p) > 50])
+            
+            # 4. Strict Validation: If the text is mostly just "Updated" 
+            # or too short, we drop it entirely.
+            if len(full_text) < 400 or "updated" in full_text.lower() and len(full_text) < 600:
                 return None
     
             return Document(
-                page_content=text,
+                page_content=full_text,
                 metadata={"source": url}
             )
-    
-        except Exception as e:
+        except Exception:
             return None
 
-    with ThreadPoolExecutor() as executor:
-        results = list(executor.map(fetch, urls))
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        results = list(executor.filter(None, executor.map(fetch, urls)))
 
-    return [doc for doc in results if doc]
+    return list(results)
 
 # @st.cache_resource(ttl="1d")
 # def load_docs_parallel(urls):
