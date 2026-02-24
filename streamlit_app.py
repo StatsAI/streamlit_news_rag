@@ -9,6 +9,7 @@ import streamlit as st
 #from unstructured.partition.html import partition_html
 import requests
 from bs4 import BeautifulSoup
+from langchain_core.documents import Document
 
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_community.vectorstores import Chroma
@@ -99,12 +100,37 @@ def load_vector_database(_embedding_func, _docs):
     return Chroma.from_documents(documents=_docs, embedding=_embedding_func, 
                                  collection_name="cnn_docs", client=client)
 
+
 @st.cache_resource(ttl="1d")
 def load_docs_parallel(urls):
+    docs = []
+
+    def fetch(url):
+        try:
+            response = requests.get(url, timeout=10)
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            paragraphs = soup.find_all("p")
+            text = " ".join([p.get_text() for p in paragraphs])
+
+            return Document(
+                page_content=text,
+                metadata={"source": url}
+            )
+        except:
+            return None
+
     with ThreadPoolExecutor() as executor:
-        loaders = [UnstructuredURLLoader(urls=[u]) for u in urls]
-        docs_list = list(executor.map(lambda l: l.load(), loaders))
-    return [doc for sublist in docs_list for doc in sublist]
+        results = list(executor.map(fetch, urls))
+
+    return [doc for doc in results if doc]
+
+# @st.cache_resource(ttl="1d")
+# def load_docs_parallel(urls):
+#     with ThreadPoolExecutor() as executor:
+#         loaders = [UnstructuredURLLoader(urls=[u]) for u in urls]
+#         docs_list = list(executor.map(lambda l: l.load(), loaders))
+#     return [doc for sublist in docs_list for doc in sublist]
 
 # --- Hybrid LLM Logic (Gemini -> Groq Fallback) ---
 
