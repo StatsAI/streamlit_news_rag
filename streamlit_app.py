@@ -21,8 +21,6 @@ import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 
-
-
 # --- Page Config & Styling ---
 st.set_page_config(page_title="CNN News Intelligence", layout="wide")
 
