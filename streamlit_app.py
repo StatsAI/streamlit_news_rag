@@ -3,14 +3,12 @@ import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import sqlite3
 import time
-
 import streamlit as st
-
 #from unstructured.partition.html import partition_html
 import requests
 from bs4 import BeautifulSoup
 from langchain_core.documents import Document
-
+from langchain_openai import ChatOpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_community.vectorstores import Chroma
@@ -189,6 +187,17 @@ def load_docs_parallel(urls):
 
 # --- Hybrid LLM Logic (Gemini -> Groq Fallback) ---
 
+@st.cache_resource
+def get_openai():
+    try:
+        return ChatGoogleGenerativeAI(
+            api_key = st.secrets.get("open_ai_api_key", "")
+            llm = ChatOpenAI(model="gpt-5", temperature=0, api_key)
+        
+
+        )
+    except: return None
+        
 @st.cache_resource
 def get_gemini():
     try:
