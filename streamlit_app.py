@@ -21,13 +21,13 @@ import spacy
 import os
 
 # Try to load the model; if it fails, this will point you to the right place
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    # This forces a download to a writable directory
-    from spacy.cli import download
-    download("en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
+# try:
+#     nlp = spacy.load("en_core_web_sm")
+# except OSError:
+#     # This forces a download to a writable directory
+#     from spacy.cli import download
+#     download("en_core_web_sm")
+#     nlp = spacy.load("en_core_web_sm")
 
 # --- Page Config & Styling ---
 st.set_page_config(page_title="CNN News Intelligence", layout="wide")
