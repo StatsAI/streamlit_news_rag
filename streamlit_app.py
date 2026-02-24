@@ -269,6 +269,8 @@ with st.sidebar:
         st.rerun()
 
 # Execution Logic
+# --- Execution Logic (Updated for Parallel Processing) ---
+
 if (run_button or (query and query != st.session_state.get('last_query', ""))) and vectorstore:
     st.session_state['last_query'] = query
     
@@ -278,18 +280,48 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
         if not relevant_docs:
             st.warning("No relevant articles found.")
         else:
-            for doc in relevant_docs:
-                # Step 1: Extract Topic
+            # Define a helper to process a single document for parallel execution
+            def process_doc(doc):
                 topic = get_article_topic(doc)
-                
-                # Step 2: Generate Summary
                 summary_text, model_name = run_hybrid_summarization([doc])
                 source_url = doc.metadata.get('source', 'CNN Lite')
-                
-                # Step 3: Display with requested format
+                return topic, summary_text, model_name, source_url
+
+            # Execute summarization in parallel
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                results = list(executor.map(process_doc, relevant_docs))
+
+            # Display results
+            for topic, summary_text, model_name, source_url in results:
                 st.markdown(f"### Summary: {topic}")
                 st.write(summary_text)
                 st.write(f"**Source:** {source_url}")
                 st.divider()
 
             st.caption(f"Generated via {model_name}")
+
+
+# if (run_button or (query and query != st.session_state.get('last_query', ""))) and vectorstore:
+#     st.session_state['last_query'] = query
+    
+#     with st.spinner(f"Analyzing articles for '{query}'..."):
+#         relevant_docs = vectorstore.similarity_search(query, k=5)
+        
+#         if not relevant_docs:
+#             st.warning("No relevant articles found.")
+#         else:
+#             for doc in relevant_docs:
+#                 # Step 1: Extract Topic
+#                 topic = get_article_topic(doc)
+                
+#                 # Step 2: Generate Summary
+#                 summary_text, model_name = run_hybrid_summarization([doc])
+#                 source_url = doc.metadata.get('source', 'CNN Lite')
+                
+#                 # Step 3: Display with requested format
+#                 st.markdown(f"### Summary: {topic}")
+#                 st.write(summary_text)
+#                 st.write(f"**Source:** {source_url}")
+#                 st.divider()
+
+#             st.caption(f"Generated via {model_name}")
