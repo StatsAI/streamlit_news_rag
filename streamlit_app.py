@@ -5,7 +5,11 @@ import sqlite3
 import time
 
 import streamlit as st
-from unstructured.partition.html import partition_html
+
+#from unstructured.partition.html import partition_html
+import requests
+from bs4 import BeautifulSoup
+
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -17,9 +21,7 @@ import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 
-import spacy
-# Load the model directly; it will be available because you added it to requirements.txt
-nlp = spacy.load("en_core_web_sm")
+
 
 # --- Page Config & Styling ---
 st.set_page_config(page_title="CNN News Intelligence", layout="wide")
@@ -56,17 +58,37 @@ def load_embedding_model():
 def pull_latest_links():
     cnn_lite_url = "https://lite.cnn.com/"
     try:
-        elements = partition_html(url=cnn_lite_url)
+        response = requests.get(cnn_lite_url, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+
         links = []
-        for element in elements:
-            if element.metadata.link_urls:
-                rel = element.metadata.link_urls[0]
-                full_url = rel if rel.startswith('http') else f"{cnn_lite_url}{rel}"
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if "/202" in href:  # CNN article pattern
+                full_url = href if href.startswith("http") else f"{cnn_lite_url}{href}"
                 links.append(full_url)
-        return links[1:-2] if len(links) > 2 else links
+
+        return list(set(links))[:20]
     except Exception as e:
         st.error(f"Scraping Error: {e}")
         return []
+
+# @st.cache_data(ttl="1d")
+# def pull_latest_links():
+#     cnn_lite_url = "https://lite.cnn.com/"
+#     try:
+#         elements = partition_html(url=cnn_lite_url)
+#         links = []
+#         for element in elements:
+#             if element.metadata.link_urls:
+#                 rel = element.metadata.link_urls[0]
+#                 full_url = rel if rel.startswith('http') else f"{cnn_lite_url}{rel}"
+#                 links.append(full_url)
+#         return links[1:-2] if len(links) > 2 else links
+#     except Exception as e:
+#         st.error(f"Scraping Error: {e}")
+#         return []
+
 
 @st.cache_resource(ttl="1d")
 def load_vector_database(_embedding_func, _docs):
