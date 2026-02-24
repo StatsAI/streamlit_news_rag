@@ -127,36 +127,82 @@ def load_vector_database(_embedding_func, _docs):
 #     return Chroma.from_documents(documents=_docs, embedding=_embedding_func, 
 #                                  collection_name="cnn_docs", client=client)
 
-
 @st.cache_resource(ttl="1d")
 def load_docs_parallel(urls):
     docs = []
 
     def fetch(url):
         try:
-            response = requests.get(url, timeout=10)
+            headers = {'User-Agent': 'Mozilla/5.0'} # Added header to avoid basic blocks
+            response = requests.get(url, timeout=10, headers=headers)
             soup = BeautifulSoup(response.text, "html.parser")
     
-            # Better filtering
-            article = soup.find("div", class_="article__content") or soup
+            # Target the specific container for article text
+            # On CNN Lite, main content is often inside a specific class or tag
+            # We explicitly remove common boilerplate elements before extracting text
+            for script in soup(["script", "style", "nav", "footer", "header"]):
+                script.extract()
+            
+            # Look for the main article content area
+            # If 'article__content' doesn't exist, we fallback to the body or main
+            article = soup.find("main") or soup.find("article") or soup.find("div", class_="article__content") or soup
     
-            paragraphs = article.find_all("p")
-            text = " ".join(
-                p.get_text().strip()
-                for p in paragraphs
-                if len(p.get_text().strip()) > 50
-            )
+            # Extract paragraphs, filtering out short or unwanted text
+            paragraphs = []
+            for p in article.find_all("p"):
+                text = p.get_text().strip()
+                # Exclude common boilerplate phrases
+                if len(text) > 50 and not any(phrase in text.lower() for phrase in ["updated", "click here", "read more"]):
+                    paragraphs.append(text)
+            
+            text = " ".join(paragraphs)
     
-            if len(text) < 500:
-                return None  # Skip bad pages
+            # Minimum length check remains
+            if len(text) < 300: 
+                return None
     
             return Document(
                 page_content=text,
                 metadata={"source": url}
             )
     
-        except:
+        except Exception as e:
             return None
+
+    with ThreadPoolExecutor() as executor:
+        results = list(executor.map(fetch, urls))
+
+    return [doc for doc in results if doc]
+
+# @st.cache_resource(ttl="1d")
+# def load_docs_parallel(urls):
+#     docs = []
+
+#     def fetch(url):
+#         try:
+#             response = requests.get(url, timeout=10)
+#             soup = BeautifulSoup(response.text, "html.parser")
+    
+#             # Better filtering
+#             article = soup.find("div", class_="article__content") or soup
+    
+#             paragraphs = article.find_all("p")
+#             text = " ".join(
+#                 p.get_text().strip()
+#                 for p in paragraphs
+#                 if len(p.get_text().strip()) > 50
+#             )
+    
+#             if len(text) < 500:
+#                 return None  # Skip bad pages
+    
+#             return Document(
+#                 page_content=text,
+#                 metadata={"source": url}
+#             )
+    
+#         except:
+#             return None
 
     # def fetch(url):
     #     try:
