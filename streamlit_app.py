@@ -333,8 +333,19 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
                 return topic, summary_text, model_name, source_url
 
             # Execute summarization in parallel
+            # --- Updated Execution Block for filtering ---
+
             with ThreadPoolExecutor(max_workers=5) as executor:
-                results = list(executor.map(process_doc, relevant_docs))
+                # 1. Get the raw results (this includes 'None' for failed/skipped fetches)
+                results = list(executor.map(fetch, urls))
+            
+            # 2. Filter out the None values after the threads have finished
+            valid_docs = [doc for doc in results if doc is not None]
+            
+            return valid_docs
+            
+            # with ThreadPoolExecutor(max_workers=5) as executor:
+            #     results = list(executor.map(process_doc, relevant_docs))
 
             # Display results
             for topic, summary_text, model_name, source_url in results:
