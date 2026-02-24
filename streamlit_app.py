@@ -138,16 +138,42 @@ def load_docs_parallel(urls):
         try:
             response = requests.get(url, timeout=10)
             soup = BeautifulSoup(response.text, "html.parser")
-
-            paragraphs = soup.find_all("p")
-            text = " ".join([p.get_text() for p in paragraphs])
-
+    
+            # Better filtering
+            article = soup.find("div", class_="article__content") or soup
+    
+            paragraphs = article.find_all("p")
+            text = " ".join(
+                p.get_text().strip()
+                for p in paragraphs
+                if len(p.get_text().strip()) > 50
+            )
+    
+            if len(text) < 500:
+                return None  # Skip bad pages
+    
             return Document(
                 page_content=text,
                 metadata={"source": url}
             )
+    
         except:
             return None
+
+    # def fetch(url):
+    #     try:
+    #         response = requests.get(url, timeout=10)
+    #         soup = BeautifulSoup(response.text, "html.parser")
+
+    #         paragraphs = soup.find_all("p")
+    #         text = " ".join([p.get_text() for p in paragraphs])
+
+    #         return Document(
+    #             page_content=text,
+    #             metadata={"source": url}
+    #         )
+    #     except:
+    #         return None
 
     with ThreadPoolExecutor() as executor:
         results = list(executor.map(fetch, urls))
