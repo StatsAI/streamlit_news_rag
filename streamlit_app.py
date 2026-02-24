@@ -219,7 +219,8 @@ def get_groq_fallback():
 
 def get_article_topic(doc):
     """Helper function to extract a short topic from the article text."""
-    llm = get_groq_fallback() # Using Groq for quick extraction
+    #llm = get_groq_fallback() # Using Groq for quick extraction
+    llm = get_openai()
     if not llm: return "Article"
     
     prompt = f"Identify the main topic of this article in 5 words or less: {doc.page_content[:1000]}"
@@ -230,7 +231,8 @@ def get_article_topic(doc):
         return "Article Content"
 
 def run_hybrid_summarization(relevant_docs):
-    groq = get_groq_fallback()
+    #groq = get_groq_fallback()
+    groq = get_openai()
     if groq:
         try:
             chain = load_summarize_chain(groq, chain_type="stuff")
