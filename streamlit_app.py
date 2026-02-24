@@ -193,7 +193,7 @@ def get_openai():
         return ChatOpenAI(
             model="gpt-5-mini",
             api_key = st.secrets.get("open_ai_api_key", ""),
-            temperature=0.7
+            temperature=0
         )
     except: return None
         
