@@ -90,16 +90,44 @@ def pull_latest_links():
 #         return []
 
 
+
 @st.cache_resource(ttl="1d")
 def load_vector_database(_embedding_func, _docs):
-    if not _docs: return None
+    if not _docs:
+        return None
+
+    # 🔹 ADD TEXT SPLITTING
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=100
+    )
+
+    split_docs = text_splitter.split_documents(_docs)
+
     client = chromadb.PersistentClient(path=".chromadb")
+
     try:
         client.delete_collection("cnn_docs")
     except:
-        pass 
-    return Chroma.from_documents(documents=_docs, embedding=_embedding_func, 
-                                 collection_name="cnn_docs", client=client)
+        pass
+
+    return Chroma.from_documents(
+        documents=split_docs,
+        embedding=_embedding_func,
+        collection_name="cnn_docs",
+        client=client
+    )
+
+# @st.cache_resource(ttl="1d")
+# def load_vector_database(_embedding_func, _docs):
+#     if not _docs: return None
+#     client = chromadb.PersistentClient(path=".chromadb")
+#     try:
+#         client.delete_collection("cnn_docs")
+#     except:
+#         pass 
+#     return Chroma.from_documents(documents=_docs, embedding=_embedding_func, 
+#                                  collection_name="cnn_docs", client=client)
 
 
 @st.cache_resource(ttl="1d")
