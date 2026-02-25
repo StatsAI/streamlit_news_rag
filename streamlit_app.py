@@ -64,7 +64,7 @@ def pull_latest_links():
                 full_url = href if href.startswith("http") else f"{cnn_lite_url}{href}"
                 links.append(full_url)
 
-        return list(set(links))[:20]
+        return list(set(links)) # Removed [:20] to ensure no articles are missed
     except Exception as e:
         st.error(f"Scraping Error: {e}")
         return []
@@ -107,9 +107,9 @@ def load_docs_parallel(urls):
                 element.extract()
             
             paragraphs = [p.get_text().strip() for p in soup.find_all("p")]
-            full_text = "\n".join([p for p in paragraphs if len(p) > 50])
+            full_text = "\n".join([p for p in paragraphs if len(p) > 20]) # Lowered threshold to avoid missing content
             
-            if len(full_text) < 400 or ("updated" in full_text.lower() and len(full_text) < 600):
+            if len(full_text) < 100: # Lowered threshold
                 return None
     
             return Document(
@@ -218,11 +218,25 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
     st.session_state['last_query'] = query
     
     with st.spinner(f"Analyzing articles for '{query}'..."):
-        relevant_docs = vectorstore.similarity_search(query, k=5)
+        # Increased k to 15 to ensure we find articles even if vector search hits multiple chunks of same doc
+        relevant_docs = vectorstore.similarity_search(query, k=15)
         
         if not relevant_docs:
             st.warning("No relevant articles found.")
         else:
+            seen_urls = set()
+            unique_docs = []
+            
+            # Filter duplicates based on source URL
+            for doc in relevant_docs:
+                url = doc.metadata.get('source')
+                if url not in seen_urls:
+                    seen_urls.add(url)
+                    unique_docs.append(doc)
+            
+            # Limit to the top 5 unique articles for display
+            unique_docs = unique_docs[:5]
+
             def process_doc(doc):
                 topic = get_article_topic(doc)
                 summary_text, model_name = run_hybrid_summarization([doc])
@@ -230,7 +244,7 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
                 return topic, summary_text, model_name, source_url
 
             with ThreadPoolExecutor(max_workers=5) as executor:
-                results = list(executor.map(process_doc, relevant_docs))
+                results = list(executor.map(process_doc, unique_docs))
             
             for topic, summary_text, model_name, source_url in results:
                 st.markdown(f"### Summary: {topic}")
