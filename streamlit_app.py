@@ -178,16 +178,16 @@ def run_hybrid_summarization(relevant_docs):
             return res['output_text'], "OpenAI (GPT-4o-Mini)"
         except Exception as e:
             return f"Error: All models failed. ({e})", "None"
-    
-    if groq:
-        try:
-            chain = load_summarize_chain(groq, chain_type="stuff")
-            res = chain.invoke({"input_documents": relevant_docs})
-            return res['output_text'], "Groq (Llama 3.3)"
-        except Exception as e:
-            return f"Error: All models failed. ({e})", "None"
-    
-    return "Error: No models available. Check your API keys.", "None"
+    else:           
+        if groq:
+            try:
+                chain = load_summarize_chain(groq, chain_type="stuff")
+                res = chain.invoke({"input_documents": relevant_docs})
+                return res['output_text'], "Groq (Llama 3.3)"
+            except Exception as e:
+                return f"Error: All models failed. ({e})", "None"
+        
+        return "Error: No models available. Check your API keys.", "None"
 
 # --- UI Layout ---
 
