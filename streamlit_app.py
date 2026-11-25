@@ -200,7 +200,9 @@ def run_hybrid_summarization(relevant_docs):
 
 # --- Rundown Logic ---
 
-MAX_ARTICLES_PER_TOPIC = 3
+MIN_TOPICS, MAX_TOPICS = 6, 10   # how many topics the rundown aims for
+MAX_BULLETS = 3                  # bullets per topic (one bullet can cover several articles)
+OTHER = "Other Headlines"
 
 def _ask_llm(prompt, max_tokens):
     """Try OpenAI first, then Groq. Returns (text, model_name) or (None, 'None')."""
@@ -226,26 +228,23 @@ def _headline(doc):
     return f"({section}) {slug} | {opening}"
 
 def _group_articles(docs):
-    """One LLM call sorts every article into topics of at most 3 articles.
+    """One LLM call sorts every article into a manageable number of broad topics.
     Returns a list of (topic name, [doc indexes])."""
     listing = "\n".join(f"[{i + 1}] {_headline(d)}" for i, d in enumerate(docs))
     prompt = (
-        "Group these news articles into topics by subject.\n"
+        f"Group these news articles into {MIN_TOPICS} to {MAX_TOPICS} broad topics by subject.\n"
         "Rules:\n"
-        f"- Each topic has AT MOST {MAX_ARTICLES_PER_TOPIC} articles. Make as many topics as needed.\n"
-        "- Put articles about the same story or subject together, e.g. Trump articles together, "
-        "Ukraine war articles together. If a subject has more than "
-        f"{MAX_ARTICLES_PER_TOPIC} articles, split it into more specific topics "
-        "(e.g. 'Trump: Tariffs', 'Trump: Pardons').\n"
-        "- A story that fits nowhere else can be its own topic.\n"
+        "- Use broad, intuitive topics, e.g. all articles about Trump or Congress go under "
+        "'Trump & US Politics'; all about the war in Ukraine under 'Russia-Ukraine War'.\n"
+        f"- Stories that don't fit any topic go in '{OTHER}'.\n"
         "- Every article number must appear exactly once.\n"
         "Reply with one line per topic, nothing else, in this format:\n"
         "Topic Name: 1, 4, 7\n\n"
         + listing
     )
-    text, _ = _ask_llm(prompt, max_tokens=1200)
+    text, _ = _ask_llm(prompt, max_tokens=800)
 
-    groups, used = [], set()
+    groups, used = {}, set()
     for line in (text or "").splitlines():
         if ":" not in line:
             continue
@@ -253,58 +252,83 @@ def _group_articles(docs):
         name = name.strip(" -*#").strip()
         idxs = [int(n) - 1 for n in re.findall(r"\d+", nums)]
         idxs = [i for i in idxs if 0 <= i < len(docs) and i not in used]
-        if not (name and idxs):
-            continue
-        used.update(idxs)
-        # Enforce the cap even if the model ignored it
-        chunks = [idxs[k:k + MAX_ARTICLES_PER_TOPIC] for k in range(0, len(idxs), MAX_ARTICLES_PER_TOPIC)]
-        for n, chunk in enumerate(chunks):
-            groups.append((name if n == 0 else f"{name} (Part {n + 1})", chunk))
+        if name and idxs:
+            groups.setdefault(name, []).extend(idxs)
+            used.update(idxs)
 
-    # Any article the model skipped (or all of them, if the call failed) becomes its own topic
-    for i, d in enumerate(docs):
-        if i not in used:
+    if text is None:
+        # Model unavailable: fall back to CNN's own sections
+        for i, d in enumerate(docs):
             parts = _url_parts(d.metadata["source"])
-            title = parts[-1].replace("-intl", "").replace("-", " ").title() if parts else "News"
-            groups.append((title, [i]))
-    return groups
+            section = parts[-2].replace("-", " ").title() if len(parts) >= 2 else OTHER
+            groups.setdefault(section, []).append(i)
+    else:
+        # Anything the model skipped goes to Other Headlines
+        skipped = [i for i in range(len(docs)) if i not in used]
+        if skipped:
+            groups.setdefault(OTHER, []).extend(skipped)
+
+    # Keep the topic count manageable even if the model made too many
+    ranked = sorted(((n, ix) for n, ix in groups.items() if n != OTHER), key=lambda g: -len(g[1]))
+    other = groups.get(OTHER, [])
+    for _, ix in ranked[MAX_TOPICS - 1:]:
+        other = other + ix
+    result = ranked[:MAX_TOPICS - 1]
+    if other:
+        result.append((OTHER, other))
+    return result
 
 def _summarize_topic(topic, docs):
+    excerpt_len = 600 if len(docs) <= 5 else 300
     excerpts = "\n\n".join(
-        f"[{i + 1}] {_headline(d)}\n{d.page_content[:600]}" for i, d in enumerate(docs)
+        f"[{i + 1}] {_headline(d)}\n{d.page_content[:excerpt_len]}" for i, d in enumerate(docs[:15])
     )
+    if topic == OTHER:
+        instructions = (
+            "Write exactly one short bullet per article, each one complete sentence "
+            "ending with its article number in brackets, e.g. [2]."
+        )
+    else:
+        instructions = (
+            f"Then write at most {MAX_BULLETS} bullets. Each bullet is one or two complete sentences "
+            "on a key development; combine related articles into the same bullet. End each bullet "
+            "with the numbers of every article it draws on, e.g. [1][4]. Cite every article at least once."
+        )
     prompt = (
         f"Write a brief for the news topic '{topic}' using the numbered articles below.\n"
-        "Reply in exactly this format and nothing else:\n"
-        "<one complete sentence overview of the topic>\n"
-        "- <key point from article 1, one or two complete sentences> [1]\n"
-        "- <key point from article 2> [2]\n"
-        "Write exactly one bullet per article, in order, each ending with its article number in brackets.\n\n"
-        + excerpts
+        "Reply with only the brief: start with one complete sentence overview of the topic "
+        "(skip the overview for 'Other Headlines'), then bullets starting with '- '.\n"
+        + instructions + "\n\n" + excerpts
     )
     text, model_name = _ask_llm(prompt, max_tokens=500)
     if not text:
         return "Error: No models available. Check your API keys.", model_name
 
-    # Turn [n] markers into links to the matching article
+    # Turn [1], [1][4] or [1, 4] markers into links to the matching articles
     def link(match):
-        n = int(match.group(1)) - 1
-        return f"[[{n + 1}]]({docs[n].metadata['source']})" if 0 <= n < len(docs) else match.group(0)
+        out = []
+        for n in re.findall(r"\d+", match.group(0)):
+            i = int(n) - 1
+            if 0 <= i < len(docs):
+                out.append(f"[[{i + 1}]]({docs[i].metadata['source']})")
+        return " ".join(out) if out else match.group(0)
 
     lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
     lines = [re.sub(r"^[*•]\s+", "- ", l) for l in lines]  # normalize bullet characters
     overview = [l for l in lines if not l.startswith("- ")]
     bullets = [l for l in lines if l.startswith("- ")]
+    if topic != OTHER:
+        bullets = bullets[:MAX_BULLETS]
     body = " ".join(overview) + ("\n\n" + "\n".join(bullets) if bullets else "")
-    return re.sub(r"\[(\d+)\]", link, body), model_name
+    return re.sub(r"\[\d+(?:\s*,\s*\d+)*\]", link, body).strip(), model_name
 
 @st.cache_data(ttl="1d", show_spinner=False)
 def build_rundown(source_urls, _docs):
     if not _docs:
         return []
 
-    # Topics with the most articles first
-    groups = sorted(_group_articles(_docs), key=lambda g: -len(g[1]))
+    # Biggest topics first, Other Headlines last
+    groups = _group_articles(_docs)
 
     def process_group(item):
         topic, idxs = item
