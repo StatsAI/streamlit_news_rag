@@ -200,6 +200,8 @@ def run_hybrid_summarization(relevant_docs):
 
 # --- Rundown Logic ---
 
+MAX_ARTICLES_PER_TOPIC = 3
+
 def _ask_llm(prompt, max_tokens):
     """Try OpenAI first, then Groq. Returns (text, model_name) or (None, 'None')."""
     for get_llm, name in ((get_openai, "OpenAI (GPT-4o-Mini)"), (get_groq_fallback, "Groq (Llama 3.3)")):
@@ -212,32 +214,38 @@ def _ask_llm(prompt, max_tokens):
             continue
     return None, "None"
 
+def _url_parts(url):
+    return [p for p in url.split("/") if p and p != "index.html"]
+
 def _headline(doc):
     """Short description of an article: CNN section + URL slug + opening words."""
-    parts = [p for p in doc.metadata["source"].split("/") if p and p != "index.html"]
+    parts = _url_parts(doc.metadata["source"])
     section = parts[-2] if len(parts) >= 2 else ""
     slug = parts[-1].replace("-", " ") if parts else ""
     opening = " ".join(doc.page_content.split())[:100]
     return f"({section}) {slug} | {opening}"
 
 def _group_articles(docs):
-    """One LLM call sorts every article into broad topics. Returns {topic: [doc indexes]}."""
+    """One LLM call sorts every article into topics of at most 3 articles.
+    Returns a list of (topic name, [doc indexes])."""
     listing = "\n".join(f"[{i + 1}] {_headline(d)}" for i, d in enumerate(docs))
     prompt = (
-        "Group these news articles into broad topics by subject.\n"
+        "Group these news articles into topics by subject.\n"
         "Rules:\n"
-        "- Use broad, intuitive topics, e.g. all articles about Trump or Congress go under "
-        "'Trump & US Politics'; all about the war in Ukraine under 'Russia-Ukraine War'.\n"
-        "- Merge related stories; do not make a topic for a single article unless it fits nowhere else.\n"
-        "- Put leftover one-off stories in 'Other News'.\n"
+        f"- Each topic has AT MOST {MAX_ARTICLES_PER_TOPIC} articles. Make as many topics as needed.\n"
+        "- Put articles about the same story or subject together, e.g. Trump articles together, "
+        "Ukraine war articles together. If a subject has more than "
+        f"{MAX_ARTICLES_PER_TOPIC} articles, split it into more specific topics "
+        "(e.g. 'Trump: Tariffs', 'Trump: Pardons').\n"
+        "- A story that fits nowhere else can be its own topic.\n"
         "- Every article number must appear exactly once.\n"
         "Reply with one line per topic, nothing else, in this format:\n"
         "Topic Name: 1, 4, 7\n\n"
         + listing
     )
-    text, _ = _ask_llm(prompt, max_tokens=600)
+    text, _ = _ask_llm(prompt, max_tokens=1200)
 
-    groups, used = {}, set()
+    groups, used = [], set()
     for line in (text or "").splitlines():
         if ":" not in line:
             continue
@@ -245,39 +253,58 @@ def _group_articles(docs):
         name = name.strip(" -*#").strip()
         idxs = [int(n) - 1 for n in re.findall(r"\d+", nums)]
         idxs = [i for i in idxs if 0 <= i < len(docs) and i not in used]
-        if name and idxs:
-            groups.setdefault(name, []).extend(idxs)
-            used.update(idxs)
+        if not (name and idxs):
+            continue
+        used.update(idxs)
+        # Enforce the cap even if the model ignored it
+        chunks = [idxs[k:k + MAX_ARTICLES_PER_TOPIC] for k in range(0, len(idxs), MAX_ARTICLES_PER_TOPIC)]
+        for n, chunk in enumerate(chunks):
+            groups.append((name if n == 0 else f"{name} (Part {n + 1})", chunk))
 
-    # Anything the model skipped (or everything, if the call failed) falls back to CNN's section
+    # Any article the model skipped (or all of them, if the call failed) becomes its own topic
     for i, d in enumerate(docs):
         if i not in used:
-            parts = [p for p in d.metadata["source"].split("/") if p and p != "index.html"]
-            section = parts[-2].replace("-", " ").title() if len(parts) >= 2 else "Other News"
-            groups.setdefault(section if text is None else "Other News", []).append(i)
+            parts = _url_parts(d.metadata["source"])
+            title = parts[-1].replace("-intl", "").replace("-", " ").title() if parts else "News"
+            groups.append((title, [i]))
     return groups
 
 def _summarize_topic(topic, docs):
-    headlines = "\n".join(f"- {_headline(d)}" for d in docs)
-    excerpts = "\n\n---\n\n".join(d.page_content[:400] for d in docs[:6])
-    prompt = (
-        f"Write a brief for the news topic '{topic}'.\n"
-        "Use 2-4 complete sentences covering the main developments across these articles. "
-        "Reply with only the brief.\n\n"
-        f"All article headlines in this topic:\n{headlines}\n\n"
-        f"Excerpts from the top articles:\n{excerpts}"
+    excerpts = "\n\n".join(
+        f"[{i + 1}] {_headline(d)}\n{d.page_content[:600]}" for i, d in enumerate(docs)
     )
-    text, model_name = _ask_llm(prompt, max_tokens=400)
-    return (text.strip() if text else "Error: No models available. Check your API keys."), model_name
+    prompt = (
+        f"Write a brief for the news topic '{topic}' using the numbered articles below.\n"
+        "Reply in exactly this format and nothing else:\n"
+        "<one complete sentence overview of the topic>\n"
+        "- <key point from article 1, one or two complete sentences> [1]\n"
+        "- <key point from article 2> [2]\n"
+        "Write exactly one bullet per article, in order, each ending with its article number in brackets.\n\n"
+        + excerpts
+    )
+    text, model_name = _ask_llm(prompt, max_tokens=500)
+    if not text:
+        return "Error: No models available. Check your API keys.", model_name
+
+    # Turn [n] markers into links to the matching article
+    def link(match):
+        n = int(match.group(1)) - 1
+        return f"[[{n + 1}]]({docs[n].metadata['source']})" if 0 <= n < len(docs) else match.group(0)
+
+    lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
+    lines = [re.sub(r"^[*•]\s+", "- ", l) for l in lines]  # normalize bullet characters
+    overview = [l for l in lines if not l.startswith("- ")]
+    bullets = [l for l in lines if l.startswith("- ")]
+    body = " ".join(overview) + ("\n\n" + "\n".join(bullets) if bullets else "")
+    return re.sub(r"\[(\d+)\]", link, body), model_name
 
 @st.cache_data(ttl="1d", show_spinner=False)
 def build_rundown(source_urls, _docs):
     if not _docs:
         return []
 
-    groups = _group_articles(_docs)
-    # Biggest topics first, "Other News" always last
-    ordered = sorted(groups.items(), key=lambda kv: (kv[0] == "Other News", -len(kv[1])))
+    # Topics with the most articles first
+    groups = sorted(_group_articles(_docs), key=lambda g: -len(g[1]))
 
     def process_group(item):
         topic, idxs = item
@@ -287,8 +314,8 @@ def build_rundown(source_urls, _docs):
                 "sources": [d.metadata["source"] for d in topic_docs]}
 
     # All topics are summarized at the same time
-    with ThreadPoolExecutor(max_workers=min(len(ordered), 32)) as executor:
-        return list(executor.map(process_group, ordered))
+    with ThreadPoolExecutor(max_workers=min(len(groups), 32)) as executor:
+        return list(executor.map(process_group, groups))
 
 # --- UI Layout ---
 
@@ -369,7 +396,7 @@ if rundown_button and vectorstore:
         st.warning("No articles available for a rundown.")
     for item in rundown:
         st.markdown(f"### {item['topic']}")
-        st.write(item["summary"])
+        st.markdown(item["summary"])
         st.write("**Sources:**")
         for url in item["sources"]:
             st.markdown(f"- {url}")
