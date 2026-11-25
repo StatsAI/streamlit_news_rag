@@ -19,6 +19,7 @@ import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 import numpy as np
+import re
 
 # --- Page Config & Styling ---
 st.set_page_config(page_title="CNN News Intelligence", layout="wide")
@@ -199,79 +200,95 @@ def run_hybrid_summarization(relevant_docs):
 
 # --- Rundown Logic ---
 
-RUNDOWN_TOPICS = 5
-
-def _cluster_embeddings(vectors, k, iters=15):
-    """Small cosine k-means in numpy (deterministic, runs in milliseconds)."""
-    X = vectors / (np.linalg.norm(vectors, axis=1, keepdims=True) + 1e-10)
-    # Farthest-point initialization so clusters start spread out
-    centers = [X[0]]
-    for _ in range(1, k):
-        sims = np.max(X @ np.array(centers).T, axis=1)
-        centers.append(X[int(np.argmin(sims))])
-    centers = np.array(centers)
-    labels = np.zeros(len(X), dtype=int)
-    for _ in range(iters):
-        labels = np.argmax(X @ centers.T, axis=1)
-        for c in range(k):
-            members = X[labels == c]
-            if len(members):
-                center = members.mean(axis=0)
-                centers[c] = center / (np.linalg.norm(center) + 1e-10)
-    return labels
-
-def _summarize_topic(excerpts):
-    prompt = (
-        "Below are excerpts from related CNN news articles.\n"
-        "Reply in exactly this format:\n"
-        "TOPIC: <major topic, 5 words or less>\n"
-        "SUMMARY: <2-3 sentence brief of the key developments>\n\n"
-        + "\n\n---\n\n".join(excerpts)
-    )
+def _ask_llm(prompt, max_tokens):
+    """Try OpenAI first, then Groq. Returns (text, model_name) or (None, 'None')."""
     for get_llm, name in ((get_openai, "OpenAI (GPT-4o-Mini)"), (get_groq_fallback, "Groq (Llama 3.3)")):
         llm = get_llm()
         if not llm:
             continue
         try:
-            text = llm.bind(max_tokens=200).invoke(prompt).content
-            topic, summary = "Top Stories", text.strip()
-            for line in text.splitlines():
-                if line.upper().startswith("TOPIC:"):
-                    topic = line.split(":", 1)[1].strip().replace(".", "")
-                elif line.upper().startswith("SUMMARY:"):
-                    summary = line.split(":", 1)[1].strip()
-            return topic, summary, name
+            return llm.bind(max_tokens=max_tokens).invoke(prompt).content, name
         except Exception:
             continue
-    return "Top Stories", "Error: No models available. Check your API keys.", "None"
+    return None, "None"
+
+def _headline(doc):
+    """Short description of an article: CNN section + URL slug + opening words."""
+    parts = [p for p in doc.metadata["source"].split("/") if p and p != "index.html"]
+    section = parts[-2] if len(parts) >= 2 else ""
+    slug = parts[-1].replace("-", " ") if parts else ""
+    opening = " ".join(doc.page_content.split())[:100]
+    return f"({section}) {slug} | {opening}"
+
+def _group_articles(docs):
+    """One LLM call sorts every article into broad topics. Returns {topic: [doc indexes]}."""
+    listing = "\n".join(f"[{i + 1}] {_headline(d)}" for i, d in enumerate(docs))
+    prompt = (
+        "Group these news articles into broad topics by subject.\n"
+        "Rules:\n"
+        "- Use broad, intuitive topics, e.g. all articles about Trump or Congress go under "
+        "'Trump & US Politics'; all about the war in Ukraine under 'Russia-Ukraine War'.\n"
+        "- Merge related stories; do not make a topic for a single article unless it fits nowhere else.\n"
+        "- Put leftover one-off stories in 'Other News'.\n"
+        "- Every article number must appear exactly once.\n"
+        "Reply with one line per topic, nothing else, in this format:\n"
+        "Topic Name: 1, 4, 7\n\n"
+        + listing
+    )
+    text, _ = _ask_llm(prompt, max_tokens=600)
+
+    groups, used = {}, set()
+    for line in (text or "").splitlines():
+        if ":" not in line:
+            continue
+        name, nums = line.rsplit(":", 1)
+        name = name.strip(" -*#").strip()
+        idxs = [int(n) - 1 for n in re.findall(r"\d+", nums)]
+        idxs = [i for i in idxs if 0 <= i < len(docs) and i not in used]
+        if name and idxs:
+            groups.setdefault(name, []).extend(idxs)
+            used.update(idxs)
+
+    # Anything the model skipped (or everything, if the call failed) falls back to CNN's section
+    for i, d in enumerate(docs):
+        if i not in used:
+            parts = [p for p in d.metadata["source"].split("/") if p and p != "index.html"]
+            section = parts[-2].replace("-", " ").title() if len(parts) >= 2 else "Other News"
+            groups.setdefault(section if text is None else "Other News", []).append(i)
+    return groups
+
+def _summarize_topic(topic, docs):
+    headlines = "\n".join(f"- {_headline(d)}" for d in docs)
+    excerpts = "\n\n---\n\n".join(d.page_content[:400] for d in docs[:6])
+    prompt = (
+        f"Write a brief for the news topic '{topic}'.\n"
+        "Use 2-4 complete sentences covering the main developments across these articles. "
+        "Reply with only the brief.\n\n"
+        f"All article headlines in this topic:\n{headlines}\n\n"
+        f"Excerpts from the top articles:\n{excerpts}"
+    )
+    text, model_name = _ask_llm(prompt, max_tokens=400)
+    return (text.strip() if text else "Error: No models available. Check your API keys."), model_name
 
 @st.cache_data(ttl="1d", show_spinner=False)
-def build_rundown(source_urls, _vectorstore, _docs):
-    # Reuse the chunk embeddings already in Chroma instead of re-embedding
-    data = _vectorstore.get(include=["embeddings", "metadatas"])
-    by_url = {}
-    for emb, meta in zip(data["embeddings"], data["metadatas"]):
-        by_url.setdefault(meta.get("source"), []).append(emb)
-
-    text_by_url = {d.metadata["source"]: d.page_content for d in _docs}
-    urls = [u for u in by_url if u in text_by_url]
-    if not urls:
+def build_rundown(source_urls, _docs):
+    if not _docs:
         return []
 
-    article_vectors = np.array([np.mean(by_url[u], axis=0) for u in urls])
-    k = min(RUNDOWN_TOPICS, len(urls))
-    labels = _cluster_embeddings(article_vectors, k)
+    groups = _group_articles(_docs)
+    # Biggest topics first, "Other News" always last
+    ordered = sorted(groups.items(), key=lambda kv: (kv[0] == "Other News", -len(kv[1])))
 
-    groups = [[urls[i] for i in range(len(urls)) if labels[i] == c] for c in range(k)]
-    groups = sorted([g for g in groups if g], key=len, reverse=True)  # biggest stories first
+    def process_group(item):
+        topic, idxs = item
+        topic_docs = [_docs[i] for i in idxs]
+        summary, model_name = _summarize_topic(topic, topic_docs)
+        return {"topic": topic, "summary": summary, "model": model_name,
+                "sources": [d.metadata["source"] for d in topic_docs]}
 
-    def process_group(group_urls):
-        excerpts = [text_by_url[u][:400] for u in group_urls[:8]]
-        topic, summary, model_name = _summarize_topic(excerpts)
-        return {"topic": topic, "summary": summary, "model": model_name, "sources": group_urls}
-
-    with ThreadPoolExecutor(max_workers=k) as executor:
-        return list(executor.map(process_group, groups))
+    # All topics are summarized at the same time
+    with ThreadPoolExecutor(max_workers=min(len(ordered), 32)) as executor:
+        return list(executor.map(process_group, ordered))
 
 # --- UI Layout ---
 
@@ -344,7 +361,7 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
 if rundown_button and vectorstore:
     start = time.perf_counter()
     with st.spinner("Building your news rundown..."):
-        rundown = build_rundown(tuple(sorted(d.metadata["source"] for d in docs)), vectorstore, docs)
+        rundown = build_rundown(tuple(sorted(d.metadata["source"] for d in docs)), docs)
     elapsed = time.perf_counter() - start
 
     st.header("Your News Rundown")
