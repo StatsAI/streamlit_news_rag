@@ -23,7 +23,9 @@ from PIL import Image
 st.set_page_config(page_title="CNN News Intelligence", layout="wide")
 
 try:
-    logo = Image.open('images/picture.png')
+    import base64
+    with open('images/picture.png', 'rb') as f:
+        logo_b64 = base64.b64encode(f.read()).decode()
     st.markdown(
         """
         <style>
@@ -40,7 +42,12 @@ try:
         """, unsafe_allow_html=True
     )
     with st.sidebar:
-        st.image(logo)
+        st.markdown(
+            f'<div style="text-align: center; margin-top: -25px;">'
+            f'<img src="data:image/png;base64,{logo_b64}" style="width: 100%;">'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 except FileNotFoundError:
     st.sidebar.warning("Logo not found. Please check 'images/picture.png' path.")
 
