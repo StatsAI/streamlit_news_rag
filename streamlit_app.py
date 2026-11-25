@@ -18,6 +18,7 @@ from langchain_classic.prompts import PromptTemplate
 import chromadb
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
+import numpy as np
 
 # --- Page Config & Styling ---
 st.set_page_config(page_title="CNN News Intelligence", layout="wide")
@@ -196,6 +197,82 @@ def run_hybrid_summarization(relevant_docs):
         
         return "Error: No models available. Check your API keys.", "None"
 
+# --- Rundown Logic ---
+
+RUNDOWN_TOPICS = 5
+
+def _cluster_embeddings(vectors, k, iters=15):
+    """Small cosine k-means in numpy (deterministic, runs in milliseconds)."""
+    X = vectors / (np.linalg.norm(vectors, axis=1, keepdims=True) + 1e-10)
+    # Farthest-point initialization so clusters start spread out
+    centers = [X[0]]
+    for _ in range(1, k):
+        sims = np.max(X @ np.array(centers).T, axis=1)
+        centers.append(X[int(np.argmin(sims))])
+    centers = np.array(centers)
+    labels = np.zeros(len(X), dtype=int)
+    for _ in range(iters):
+        labels = np.argmax(X @ centers.T, axis=1)
+        for c in range(k):
+            members = X[labels == c]
+            if len(members):
+                center = members.mean(axis=0)
+                centers[c] = center / (np.linalg.norm(center) + 1e-10)
+    return labels
+
+def _summarize_topic(excerpts):
+    prompt = (
+        "Below are excerpts from related CNN news articles.\n"
+        "Reply in exactly this format:\n"
+        "TOPIC: <major topic, 5 words or less>\n"
+        "SUMMARY: <2-3 sentence brief of the key developments>\n\n"
+        + "\n\n---\n\n".join(excerpts)
+    )
+    for get_llm, name in ((get_openai, "OpenAI (GPT-4o-Mini)"), (get_groq_fallback, "Groq (Llama 3.3)")):
+        llm = get_llm()
+        if not llm:
+            continue
+        try:
+            text = llm.bind(max_tokens=200).invoke(prompt).content
+            topic, summary = "Top Stories", text.strip()
+            for line in text.splitlines():
+                if line.upper().startswith("TOPIC:"):
+                    topic = line.split(":", 1)[1].strip().replace(".", "")
+                elif line.upper().startswith("SUMMARY:"):
+                    summary = line.split(":", 1)[1].strip()
+            return topic, summary, name
+        except Exception:
+            continue
+    return "Top Stories", "Error: No models available. Check your API keys.", "None"
+
+@st.cache_data(ttl="1d", show_spinner=False)
+def build_rundown(source_urls, _vectorstore, _docs):
+    # Reuse the chunk embeddings already in Chroma instead of re-embedding
+    data = _vectorstore.get(include=["embeddings", "metadatas"])
+    by_url = {}
+    for emb, meta in zip(data["embeddings"], data["metadatas"]):
+        by_url.setdefault(meta.get("source"), []).append(emb)
+
+    text_by_url = {d.metadata["source"]: d.page_content for d in _docs}
+    urls = [u for u in by_url if u in text_by_url]
+    if not urls:
+        return []
+
+    article_vectors = np.array([np.mean(by_url[u], axis=0) for u in urls])
+    k = min(RUNDOWN_TOPICS, len(urls))
+    labels = _cluster_embeddings(article_vectors, k)
+
+    groups = [[urls[i] for i in range(len(urls)) if labels[i] == c] for c in range(k)]
+    groups = sorted([g for g in groups if g], key=len, reverse=True)  # biggest stories first
+
+    def process_group(group_urls):
+        excerpts = [text_by_url[u][:400] for u in group_urls[:8]]
+        topic, summary, model_name = _summarize_topic(excerpts)
+        return {"topic": topic, "summary": summary, "model": model_name, "sources": group_urls}
+
+    with ThreadPoolExecutor(max_workers=k) as executor:
+        return list(executor.map(process_group, groups))
+
 # --- UI Layout ---
 
 st.title("CNN RAG Intelligence")
@@ -211,17 +288,19 @@ status_ui.success("System Ready!")
 with st.sidebar:
     query = st.text_input("Search Topic:", value="Trump")
     run_button = st.button('Generate Summaries')
+    rundown_button = st.button('Get Rundown')
     
     st.markdown("---")
     if st.sidebar.button('Clear Cache & Refresh'):
         pull_latest_links.clear()
         load_docs_parallel.clear()
         load_vector_database.clear()
+        build_rundown.clear()
         st.cache_resource.clear()
         st.rerun()
 
 # Execution Logic
-if (run_button or (query and query != st.session_state.get('last_query', ""))) and vectorstore:
+if (run_button or (query and query != st.session_state.get('last_query', ""))) and vectorstore and not rundown_button:
     st.session_state['last_query'] = query
     
     with st.spinner(f"Analyzing articles for '{query}'..."):
@@ -260,3 +339,24 @@ if (run_button or (query and query != st.session_state.get('last_query', ""))) a
                 st.divider()
 
             st.caption(f"Generated via {model_name}")
+
+# Rundown Logic
+if rundown_button and vectorstore:
+    start = time.perf_counter()
+    with st.spinner("Building your news rundown..."):
+        rundown = build_rundown(tuple(sorted(d.metadata["source"] for d in docs)), vectorstore, docs)
+    elapsed = time.perf_counter() - start
+
+    st.header("Your News Rundown")
+    if not rundown:
+        st.warning("No articles available for a rundown.")
+    for item in rundown:
+        st.markdown(f"### {item['topic']}")
+        st.write(item["summary"])
+        st.write("**Sources:**")
+        for url in item["sources"]:
+            st.markdown(f"- {url}")
+        st.divider()
+
+    if rundown:
+        st.caption(f"Generated via {rundown[0]['model']} in {elapsed:.1f}s")
